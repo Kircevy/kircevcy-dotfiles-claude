@@ -109,6 +109,23 @@ For each entry pruned:
 
 Write the originals (verbatim) into ~/.claude/memory/cleaned.md, grouped under their original section headers, each entry followed by a one-line deletion reason in parentheses. Then head to BUILD INDEX.
 
+## AUDIT INSTRUCTION
+
+Audit H2 classification in ~/.claude/memory/promoted.md. Each section title must be recall-friendly — a future Claude looking up a rule should know which H2 to open from the title alone.
+
+Find and fix:
+1. Catch-all sections (Misc, "quality", grab-bags) — redistribute their bullets into better-fitting H2 or, if a coherent subtheme of ≥3 bullets emerges, give it its own H2.
+2. Bullets filed under the wrong theme — move verbatim to the right H2.
+3. Large mixed sections where a coherent subtheme of ≥3 bullets deserves its own H2.
+4. Section titles that don't reflect their actual content — rename.
+
+Constraints:
+- Move bullets verbatim. No edits to wording.
+- Don't create new H2 with <3 bullets.
+- Respect CLAUDE.md's "Avoid Taxonomy Hell" — only split when recall genuinely improves.
+
+After editing promoted.md, head to BUILD INDEX.
+
 ## BUILD INDEX
 
 Explodes promoted.md into ~/.claude/memory/pages/{index.md,<slug>.md}. One page per H2 topic, bullets verbatim, and prunes pages whose topics were removed. Run after any promoted.md update.

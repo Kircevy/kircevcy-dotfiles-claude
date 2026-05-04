@@ -76,6 +76,10 @@ The user's attention is the scarce resource. A long reply with low signal-to-wor
 
 ## Long-term Memory
 
+Read relevant memory pages before start responding on user request.
+
 @memory/pages/index.md
+
+Memories are reminders, not ground truth. Treat memories as historical snapshot. When contradicts new findings, flag before update memory.
 
 > To maintain or update memory, see memory/BUILD.md
