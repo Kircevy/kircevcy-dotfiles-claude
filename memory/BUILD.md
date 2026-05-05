@@ -10,19 +10,19 @@ Pipeline (parallelize via subagents where volume warrants):
 
 1. DISTILL → ~/.claude/memory/distilled/<slug>.md per project (one .md per cwd). Read each session's JSONL, order events by timestamp, keep only user (string content) and assistant (text blocks) where isSidechain=false. Drop <system-reminder>, <command-*>, <task-notification>, "Cache keep-alive..." ticks, "<<autonomous-loop...>>" sentinels.
 
-2. EXTRACT per .md → bullet nuggets. Each: claim as STANDING RULE (not "today the user did X") + line citation + tag in {ai-default-conflict, repeated-correction, costly-correction, trial-and-error} → ~/.claude/memory/distilled/extracted/<num>-<slug>.md
+2. EXTRACT per .md → bullet nuggets. Each: STANDING-RULE claim + line citation + tag in {ai-default-conflict, repeated-correction, costly-correction, trial-and-error} → ~/.claude/memory/distilled/extracted/<num>-<slug>.md
 
 3. CLUSTER across projects → one merged file. H2 themes (8–14); merge near-duplicates; carry `(×N sources)` cross-project recurrence count → ~/.claude/memory/distilled/extracted/_merged.md
 
-4. TRIAGE → prepend each bullet with `- [+] ` (accept), `- [-] ` (reject), or `- [?] ` (manual review). Resolve all `[?]` in a follow-up pass; target 30–45% promote rate among pending. → ~/.claude/memory/distilled/extracted/_triaged.md
+4. TRIAGE → prepend each bullet with `- [+]`, `- [-]`, or `- [?]` → ~/.claude/memory/distilled/extracted/_triaged.md
 
-5. PROMOTE → split by marker into promoted/pending/rejected.md. promoted.md: pure claim text, themed H2 only. NO line citations, NO `[tag]`, NO `(×N sources)`. The audit files keep them.
+5. PROMOTE → ~/.claude/memory/promote.py merges `_triaged.md` into promoted/pending/rejected.md. For a fresh INIT (no carryover desired), `rm` the three destination files first. promoted.md: pure claim text under themed H2; pending keeps `[?]` markers; rejected keeps citations and metadata.
 
 KEEP: AI-default conflicts, costly corrections, repeated corrections, hard env facts (paths under ~, tool versions, API endpoints, hardware, identity), cross-project recurrence ≥2.
 
 DROP: in-flight project state, AI defaults, narrow trial-and-error empirical findings, project-internal mechanics, claims too narrow to justify always-loaded cost.
 
-Bias FALSE NEGATIVES > false positives — promoted memory pollutes every future Claude session. Target 50–70 nuggets, 2–3k words. Head to BUILD INDEX after promoted.md creation.
+Bias FALSE NEGATIVES > false positives — promoted memory pollutes every future Claude session. Target ~50–70 nuggets. Head to BUILD INDEX after promoted.md creation.
 
 ### VALUE MAP
 
@@ -36,63 +36,44 @@ Bias FALSE NEGATIVES > false positives — promoted memory pollutes every future
 
 扣分项：
 - 频繁变化的中间产物，写入持久记忆后需要频繁更新
-- AI 默认就知道，默认就会做的事，不用记忆
+- AI 默认就会做的事
 - 偶然的问题，不太可能再次用到
-- 网上找得到的知识，AI 下次很容易想到上网获取
+- 网上找得到的知识
 
 ## UPDATE INSTRUCTION
 
-TASK: Incremental update of my long-term memory pipeline at ~/.claude/memory/.
+Incremental update of ~/.claude/memory/. Same KEEP/DROP rules and FALSE-NEGATIVE bias as INIT.
 
-  CONTEXT (read these first):
-  - ~/.claude/memory/BUILD.md            — full build spec (DISTILL→EXTRACT→CLUSTER→TRIAGE→PROMOTE)
-  - ~/.claude/memory/promoted.md         — current accepted memory (DON'T re-extract these)
-  - ~/.claude/memory/rejected.md         — past [-] decisions (DON'T re-extract these either)
-  - ~/.claude/memory/cleaned.md          — entries pruned post-promotion (DON'T re-extract these either)
-  - ~/.claude/memory/distill.py          — supports --since YYYY-MM-DD for incremental
-  - ~/.claude/memory/promote.py          — splits _triaged.md → promoted/pending/rejected.md (OVERWRITES)
+  CONTEXT — do NOT re-extract claims already present in any of:
+  - promoted.md, pending.md, rejected.md, cleaned.md
+  - distill.py — anchors `--since` on distill-history.md
+  - promote.py — merge-mode (carryover preserved, dedup by claim text)
 
   PIPELINE:
 
-  1. DISTILL incrementally:
-       ~/.claude/memory/distill.py --since $(stat -c %Y /home/bate/.claude/memory/promoted.md | xargs -I{} date -d @{} +%F)
-     Outputs ~/.claude/memory/distilled/<slug>.md, one per project cwd.
+  1. DISTILL: `~/.claude/memory/distill.py`. Outputs `~/.claude/memory/distilled/<slug>.md`, one per project cwd. Pass `--since YYYY-MM-DD` to override the auto-anchor.
 
-2. EXTRACT in parallel (one general-purpose subagent per .md). Each agent:
-   - Reads its assigned .md
-   - Outputs bullets to /tmp/memory-extract/<slug>.md as:
-       - [tag] STANDING-RULE CLAIM (cite: <slug>:L<line>)
-   - Tags ∈ {ai-default-conflict, repeated-correction, costly-correction, trial-and-error}
-   - Skip nuggets already in promoted.md / rejected.md / cleaned.md (give each agent the H2 theme list)
-   - Bias FALSE NEGATIVES — promoted memory pollutes every future session
-   - DROP: in-flight project state, AI defaults, googlable knowledge, narrow trial-and-error
+  2. EXTRACT in parallel (one general-purpose subagent per .md). Each agent reads its assigned .md and writes bullets to `/tmp/memory-extract/<slug>.md` in the same format as INIT step 2. Give each agent the H2 theme list of promoted.md.
 
-3. CLUSTER+TRIAGE in main thread:
-   - Read all /tmp/memory-extract/*.md
-   - Mark each [+] / [-] / [?] under H2 themes matching existing promoted.md
-   - Borderline conflicts with existing memory → [?]
+  3. CLUSTER+TRIAGE in main thread:
+     - Read all /tmp/memory-extract/*.md.
+     - Build `distilled/extracted/_triaged.md` with NEW-round bullets only.
+     - Mark each `- [+]`, `- [-]`, or `- [?]` under H2 themes matching existing promoted.md.
+     - Borderline conflicts with existing memory → [?].
+     - Bullet format promote.py parses:
+         - [+/-/?] CLAIM TEXT [tag] (×N sources)
+           cited: <slug>:L<line>      ← 2-space indent continuation, optional
 
-4. RECONSTRUCT _triaged.md (CRITICAL — promote.py overwrites, no idempotence):
-   - Backup: cp promoted.md promoted.md.bak; cp rejected.md rejected.md.bak; cp pending.md pending.md.bak
-   - Build distilled/extracted/_triaged.md =
-       (existing promoted.md bullets prefixed `- [+] ` and suffixed ` [carryover] (×1 sources)`)
-       + (existing rejected.md bullets prefixed `- [-] `, keeping their [tag] (×N sources) + cited: continuation)
-       + (new round, properly marked [+]/[-]/[?])
-   - Same H2 may appear multiple times — promote.py merges them.
-   - Bullet format that promote.py parses:
-       - [+/-/?] CLAIM TEXT [tag] (×N sources)
-         cited: <slug>:L<line>      ← 2-space indent continuation, optional
+  4. AUTO-RESOLVE [?] (default):
+     - For each [?] in `_triaged.md` and `pending.md`, default to `[-]` UNLESS the bullet adds standalone value not already captured in BUILD.md or any memory file.
+     - If a [?] flagged a contradiction with an existing `promoted.md` entry, edit promoted.md to delete or replace the stale entry FIRST, then resolve the [?].
+     - Override: edit the marker before this step or say "stop at [?]".
 
-5. PROMOTE & VERIFY:
-   - ~/.claude/memory/promote.py
-   - diff promoted.md.bak promoted.md  →  must show ONLY `>` adds, ZERO `<` deletes
-   - diff rejected.md.bak rejected.md  →  same check
-   - If any deletion: restore from .bak and debug parser.
+  5. PROMOTE: `~/.claude/memory/promote.py`. Idempotent.
 
-6. REPORT:
-   - Counts: net-new [+] in promoted, audit [-] in rejected, [?] in pending.
-   - Any [?] are blocking — list them; user must flip markers and re-run step 5.
-   - Then head to BUILD INDEX.
+  6. REPORT & BUILD INDEX:
+     - Counts: net-new [+] in promoted, audit [-] in rejected.
+     - Then run pages.py.
 
 ## CLEAN INSTRUCTION
 
@@ -102,6 +83,7 @@ Audit ~/.claude/memory/promoted.md and prune entries matching any of:
   3. Vague meta-advice with no concrete future trigger.
   4. Version-pinned facts that will rot.
   5. Empirical results or numbers.
+  6. Direct answer rediscoverable by a quick `rg`/`Read` in a known repo.
 
 For each entry pruned:
   - If a durable kernel survives (methodology, conclusion, sweet-spot rule), keep that kernel and drop the specifics.
@@ -111,13 +93,12 @@ Write the originals (verbatim) into ~/.claude/memory/cleaned.md, grouped under t
 
 ## AUDIT INSTRUCTION
 
-Audit H2 classification in ~/.claude/memory/promoted.md. Each section title must be recall-friendly — a future Claude looking up a rule should know which H2 to open from the title alone.
+Audit H2 classification in ~/.claude/memory/promoted.md. Section titles must be recall-friendly: title alone tells a future Claude which H2 to open.
 
 Find and fix:
-1. Catch-all sections (Misc, "quality", grab-bags) — redistribute their bullets into better-fitting H2 or, if a coherent subtheme of ≥3 bullets emerges, give it its own H2.
-2. Bullets filed under the wrong theme — move verbatim to the right H2.
-3. Large mixed sections where a coherent subtheme of ≥3 bullets deserves its own H2.
-4. Section titles that don't reflect their actual content — rename.
+1. Catch-all sections (Misc, "quality", grab-bags) — redistribute their bullets, or split off a coherent subtheme of ≥3 bullets into its own H2.
+2. Bullets filed under the wrong theme — move verbatim.
+3. Section titles that don't reflect their actual content — rename.
 
 Constraints:
 - Move bullets verbatim. No edits to wording.
@@ -128,9 +109,9 @@ After editing promoted.md, head to BUILD INDEX.
 
 ## BUILD INDEX
 
-Explodes promoted.md into ~/.claude/memory/pages/{index.md,<slug>.md}. One page per H2 topic, bullets verbatim, and prunes pages whose topics were removed. Run after any promoted.md update.
+Run `~/.claude/memory/pages.py`. Explodes promoted.md into one page per H2 topic under ~/.claude/memory/pages/{index.md,<slug>.md}. Prunes pages whose topics were removed.
 
-Lastly add @-include for index.md to ~/.claude/CLAUDE.md to activate memory.
+First-time setup: add `@memory/pages/index.md` to ~/.claude/CLAUDE.md (path is relative to CLAUDE.md's directory).
 
 ## SCRIPTS TO USE
 

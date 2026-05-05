@@ -14,6 +14,8 @@ from pathlib import Path
 
 PROJECTS = Path.home() / ".claude" / "projects"
 OUT_DIR = Path.home() / ".claude" / "memory" / "distilled"
+HISTORY = Path.home() / ".claude" / "memory" / "distill-history.md"
+HISTORY_LINE_RE = re.compile(r"^- (\d{4}-\d{2}-\d{2})T")
 SYSTEM_REMINDER_RE = re.compile(r"<system-reminder>.*?</system-reminder>", re.S)
 COMMAND_TAG_RE = re.compile(r"<(command-name|command-message|command-args|local-command-stdout|local-command-caveat|task-notification)>.*?</\1>", re.S)
 CACHE_TICK_RE = re.compile(r"^Cache keep-alive\. Idle tick \d+/\d+\.\s*$")
@@ -124,7 +126,41 @@ def process(jsonl_path: Path, since_iso: str | None) -> dict | None:
     }
 
 
+def _last_run_date() -> str | None:
+    """Return the date (YYYY-MM-DD) of the most recent distill-history entry, or None."""
+    if not HISTORY.exists():
+        return None
+    last = None
+    for line in HISTORY.read_text().splitlines():
+        m = HISTORY_LINE_RE.match(line)
+        if m:
+            last = m.group(1)
+    return last
+
+
+def _append_history(since_iso: str | None, n_sessions: int, n_projects: int, raw_bytes: int, distilled_bytes: int) -> None:
+    import datetime as dt
+    now = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
+    since_str = f"since {since_iso}" if since_iso else "full"
+    line = (
+        f"- {now} — {since_str} — "
+        f"{n_sessions} sessions / {n_projects} projects / "
+        f"{raw_bytes/1e6:.1f} MB raw → {distilled_bytes/1e6:.2f} MB distilled\n"
+    )
+    if not HISTORY.exists():
+        HISTORY.write_text("# Distill history\n\n" + line)
+    else:
+        with HISTORY.open("a") as f:
+            f.write(line)
+
+
 def main(since_iso: str | None, project_filters: list[str]) -> None:
+    if since_iso is None:
+        since_iso = _last_run_date()
+        if since_iso:
+            print(f"(default --since {since_iso} from distill-history.md)")
+        else:
+            print("(no distill-history.md; doing full distill)")
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     project_dirs = [p for p in sorted(PROJECTS.iterdir()) if p.is_dir()] if PROJECTS.is_dir() else []
     if project_filters:
@@ -170,6 +206,8 @@ def main(since_iso: str | None, project_filters: list[str]) -> None:
     for cwd, recs in sorted(by_cwd.items(), key=lambda kv: -len(kv[1]))[:10]:
         u = sum(r["n_user"] for r in recs)
         print(f"  {len(recs):>4} sessions  {u:>5} prompts  {cwd}")
+
+    _append_history(since_iso, n_sessions, len(by_cwd), raw_total, distilled_total)
 
 
 def _render_md(cwd: str, recs: list[dict]) -> str:

@@ -13,3 +13,6 @@
 
 # Backups
 *.bak
+
+# Per-machine distill audit log (each host has its own history)
+/distill-history.md
