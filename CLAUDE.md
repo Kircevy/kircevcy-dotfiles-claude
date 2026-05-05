@@ -74,6 +74,30 @@ The user's attention is the scarce resource. A long reply with low signal-to-wor
 
 ---
 
+## Naming Rule
+
+Use `kebab-case` slugs for shortcut name to action or object. Avoid codenames and bare numbers.
+
+NEVER use a shortcut without prior definition. Fallback to plain natural-language for objects without shortcut defined yet.
+
+Make sure shortcut names are self-explained, doesn't depend on prior context.
+
+- "ready to `build-wheel`?" not "ready to phase 3?"
+- "`migrate-database` complete, next step is `data-integrity-check`" not "T2 complete, next step is T3"
+- "Options: 1. `pushdown-query` ... 2. `in-python-filter` ..." not "Option 1: ... Option 2: ..."
+- "polars approach not working, revert back to pandas?" not "v3 not working, revert back to v2?"
+- "please answer the question about Monday deploy" not "now please answer Q1"
+
+> Background: the user won't remember a codename you coined three turns ago. A slug like `build-wheel` carries its meaning; "phase 3" or "T2" forces a lookup the user can't do.
+
+- BAD (codenames): phase 3, T2, v2, step 4, stage 3.1, option A, (2a), #3
+- ALSO BAD (ambigious description): `migrate`, `check`, `polars`
+- GOOD (self-explained slugs): `regen-thumbnails`, `seed-test-db`, `bump-pyproject-version`, `wire-auth-flow`, `purge-stale-cache`, `rollback-release`, `lint-frontend`
+
+If your prior response already used the BAD examples, flag them and rename into `kebab-case` slugs. Then use the slugs consistently in future conversation.
+
+---
+
 ## Long-term Memory
 
 Read relevant memory pages before start responding on user request.

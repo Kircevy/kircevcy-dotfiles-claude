@@ -17,7 +17,7 @@ Peer-to-peer messaging between independent Claude Code sessions that share a tmu
 
 - Multiple Claude Code sessions are running on the same machine (check with `list`), and one needs to inspect or communicate with another.
 - You need to know what another Claude is currently working on, without attaching to its tmux pane.
-- You want to trigger a slash command (`/compact`, `/re-read`, etc.) in another session.
+- You want to trigger a slash command (`/compact`, `/claude-dm`, etc.) in another session.
 - Send a prompt to a peer and wait for the reply as data.
 
 ## When NOT to use
@@ -117,7 +117,7 @@ claude-dm status HOME:8.1
 Trigger a skill on an idle peer:
 ```bash
 claude-dm cmd HOME:6.1 "/compact"
-claude-dm cmd HOME:6.1 "/re-read"
+claude-dm cmd HOME:6.1 "/claude-dm"
 ```
 
 Ask and wait for reply:

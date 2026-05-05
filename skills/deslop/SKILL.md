@@ -6,7 +6,7 @@ description: >
   honesty, lost specificity, and boilerplate scaffolding. Use when the user says
   "deslop", "rid the slop", "clean up this AI article", "remove AI slop",
   "depollute", "make this sound less AI", or hands over text that reads as
-  obvious LLM output and wants a human-voice rewrite. Works on any language.
+  obvious LLM output and wants a human-voice rewrite.
 ---
 
 # Deslop — Strip AI Slop From an Article
@@ -16,6 +16,15 @@ Rewrite an AI-generated article into prose that a human author would actually pu
 ## Overview
 
 LLMs default to a recognizable "slop register": emoji-stuffed headers, marketing buzzwords, forced trichotomies, tables for everything, sanitized opinions, and template sections that repeat across the whole document. Readers detect this within seconds and discount the content. This skill applies a fixed checklist to identify those patterns, then rewrites them while preserving the underlying facts and structure the author actually needs.
+
+### Two layers of slop
+
+Slop is not one thing. It comes in two layers, and they are removed by different means:
+
+1. **Surface slop** — emoji, marketing hyperbole ("革命/降维打击/封神"), philosophy tics ("归根结底/本质是/说白了"), Chinese-English code-mixing. Models *recognize* these as slop. A simple "rewrite in a human voice" prompt removes them reliably across all voice variants.
+2. **Structural slop** — markdown headers, numbered sections (一/二/三 or 1/2/3), two-column tables for trivial pairs, 总-分-总 closures, "三大优势/四大要点" forced groupings, tacked-on "总结" paragraphs. Models do NOT recognize these as slop — they treat them as "good organization" or "professional formatting". Voice prompts leave structural slop intact, and may even *reinforce* it: when asked to rewrite a sloppy article in a human voice without further constraints, the model typically expands rather than condenses, adding more sections and headers along the way.
+
+This split is why the skill cannot collapse into a single voice instruction. Removing surface slop is the easy half — any tone prompt does it. Removing structural slop requires explicit constraint: drop headers, drop numbered groupings, default to prose, justify every table, refuse to add a closing summary the original didn't have. The 4-phase workflow and the checklist below operationalize that. When in a hurry and the workflow is too heavy, the minimum viable prompt is "rewrite in a human voice + no markdown headers, no numbered sections, no tables, no closing summary, ≤N words" — but that is the floor, not the ceiling, of what this skill should produce.
 
 ## When to Use
 
