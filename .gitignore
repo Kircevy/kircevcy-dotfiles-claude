@@ -64,3 +64,4 @@ __pycache__/
 RTK.md
 .codex
 .claude-usage-cache.json
+.last-cleanup
