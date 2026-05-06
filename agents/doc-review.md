@@ -1,10 +1,6 @@
 ---
 name: doc-review
-description: >
-  Internal documentation review engine for the /review skill. Accepts any
-  target (documentation files, directory, or "git diff") and returns a
-  structured findings table of documentation pitfalls. Not intended for
-  direct user invocation.
+description: Internal engine for the /review skill. Do not invoke directly.
 model: inherit
 color: blue
 tools: ["Bash(git diff:*)", "Bash(git status:*)", "Bash(git log:*)", "Bash(git show:*)", "Read", "Grep", "Glob"]

@@ -1,9 +1,6 @@
 ---
 name: ai-slop-review
-description: >
-  Internal AI slop review engine for the /review skill. Accepts any target
-  (files, directory, or "git diff") and returns a structured findings table
-  for AI-generated code patterns. Not intended for direct user invocation.
+description: Internal engine for the /review skill. Do not invoke directly.
 model: inherit
 color: yellow
 tools: ["Bash(git diff:*)", "Bash(git status:*)", "Bash(git log:*)", "Bash(git show:*)", "Read", "Grep", "Glob"]

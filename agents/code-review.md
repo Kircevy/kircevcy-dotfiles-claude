@@ -1,9 +1,6 @@
 ---
 name: code-review
-description: >
-  Internal verification engine for the /review skill. Accepts any target
-  (files, directory, or "git diff") and returns a structured findings table.
-  Not intended for direct user invocation.
+description: Internal engine for the /review skill. Do not invoke directly.
 model: inherit
 color: cyan
 tools: ["Bash(git diff:*)", "Bash(git status:*)", "Bash(git log:*)", "Bash(git show:*)", "Read", "Grep", "Glob"]
