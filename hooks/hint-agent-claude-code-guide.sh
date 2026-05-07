@@ -28,6 +28,7 @@ esac
 # CLAUDE.md is prose guidance, never a Claude Code schema — skip the hint.
 case "${file_path##*/}" in
     CLAUDE.md) exit 0 ;;
+    memory/*.md) exit 0 ;;
 esac
 
 SID=$(jq -r '.session_id // "unknown"' <<< "$input")
