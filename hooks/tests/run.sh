@@ -442,6 +442,38 @@ for safe_cmd in "ls" "head -n 5 /tmp/x" "cmd | head | wc -l" "cmd || head -n 5 f
 done
 
 rm -f "$nht_cache" "$nht_cache2"
+
+# no-bg-head-tail-pipe: hard-deny when run_in_background=true with trailing
+# `| head` / `| tail`. Foreground commands (handled by no-head-tail-pipe) and
+# intermediate `| head | wc` are pass-through.
+assert_deny no-bg-head-tail-pipe \
+  '{"tool_input":{"command":"rg foo | head -n 20","run_in_background":true}}' \
+  "Background Bash"
+assert_deny no-bg-head-tail-pipe \
+  '{"tool_input":{"command":"./server | tail -f","run_in_background":true}}' \
+  "Background Bash"
+assert_silent no-bg-head-tail-pipe \
+  '{"tool_input":{"command":"rg foo | head -n 20","run_in_background":false}}'
+assert_silent no-bg-head-tail-pipe \
+  '{"tool_input":{"command":"rg foo -m 20","run_in_background":true}}'
+assert_silent no-bg-head-tail-pipe \
+  '{"tool_input":{"command":"rg foo | head | wc -l","run_in_background":true}}'
+assert_silent no-bg-head-tail-pipe \
+  '{"tool_input":{"command":"rg foo | head -n 20 # BYPASS_BACKGROUND_HEAD_TAIL","run_in_background":true}}'
+
+# warn-auto-bg-head-tail-pipe: PostToolUse advisory when a foreground Bash got
+# auto-promoted to background (timeout) and ends with `| head` / `| tail`.
+# Explicit run_in_background=true is owned by no-bg-head-tail-pipe.
+assert_context warn-auto-bg-head-tail-pipe \
+  '{"tool_input":{"command":"rg foo | tail -n 20","run_in_background":false},"tool_response":{"backgroundTaskId":"bg-1"}}' \
+  "auto-backgrounded"
+assert_silent warn-auto-bg-head-tail-pipe \
+  '{"tool_input":{"command":"rg foo | tail -n 20","run_in_background":true},"tool_response":{"backgroundTaskId":"bg-1"}}'
+assert_silent warn-auto-bg-head-tail-pipe \
+  '{"tool_input":{"command":"rg foo | tail -n 20","run_in_background":false},"tool_response":{}}'
+assert_silent warn-auto-bg-head-tail-pipe \
+  '{"tool_input":{"command":"./server","run_in_background":false},"tool_response":{"backgroundTaskId":"bg-1"}}'
+
 assert_deny no-sed-print "$(jq -n --arg c "echo x | sed -n '12,13p' /tmp/x" '{tool_input:{command:$c}}')" "sed -n"
 assert_deny no-cat-write "$(jq -n --arg c "echo go | cat << EOF ${REDIR} /tmp/x
 hi

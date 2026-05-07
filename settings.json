@@ -23,6 +23,7 @@
       "/tmp"
     ]
   },
+  "cleanupPeriodDays": 3650,
   "enableAllProjectMcpServers": true,
   "skillListingBudgetFraction": 0.05,
   "skillOverrides": {
@@ -53,6 +54,16 @@
           {
             "type": "command",
             "command": "bash ~/.claude/hooks/no-head-tail-pipe.sh",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/no-bg-head-tail-pipe.sh",
             "timeout": 5
           }
         ]
@@ -246,6 +257,16 @@
           {
             "type": "command",
             "command": "bash ~/.claude/hooks/python-unbuffered-post.sh",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/warn-auto-bg-head-tail-pipe.sh",
             "timeout": 5
           }
         ]

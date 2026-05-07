@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import datetime as dt
 import json
 import re
 from collections import defaultdict
@@ -15,7 +16,8 @@ from pathlib import Path
 PROJECTS = Path.home() / ".claude" / "projects"
 OUT_DIR = Path.home() / ".claude" / "memory" / "distilled"
 HISTORY = Path.home() / ".claude" / "memory" / "distill-history.md"
-HISTORY_LINE_RE = re.compile(r"^- (\d{4}-\d{2}-\d{2})T")
+LOCAL_TZ = dt.timezone(dt.timedelta(hours=8))  # user lives in UTC+8
+HISTORY_LINE_RE = re.compile(r"^- (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}[+-]\d{2}:\d{2})")
 SYSTEM_REMINDER_RE = re.compile(r"<system-reminder>.*?</system-reminder>", re.S)
 COMMAND_TAG_RE = re.compile(r"<(command-name|command-message|command-args|local-command-stdout|local-command-caveat|task-notification)>.*?</\1>", re.S)
 CACHE_TICK_RE = re.compile(r"^Cache keep-alive\. Idle tick \d+/\d+\.\s*$")
@@ -46,12 +48,16 @@ def extract_assistant_text(content) -> str:
     return "\n".join(p for p in parts if p).strip()
 
 
-def process(jsonl_path: Path, since_iso: str | None) -> dict | None:
-    """Distill one transcript file. If `since_iso` is YYYY-MM-DD, only keep
-    user/assistant messages whose timestamp is >= that date (inclusive
-    lower bound, no upper bound). Sessions with zero in-window user prompts
-    after slicing are dropped. Lexicographic compare on ISO-8601 timestamps
-    sorts correctly without parsing."""
+def _ts_to_seconds(ts: str) -> str:
+    """Strip fractional seconds so lexical compare against second-precision cutoff_z stays correct."""
+    return ts.split(".", 1)[0] + "Z" if "." in ts else ts
+
+
+def process(jsonl_path: Path, cutoff_z: str | None) -> dict | None:
+    """Distill one transcript file. `cutoff_z` is a seconds-precision UTC 'Z'
+    string (e.g. '2026-05-06T07:24:00Z'); when set, only messages with
+    timestamp >= cutoff_z are kept. Transcript timestamps are millisecond-
+    precision UTC 'Z'; we trim fractional digits before lexical compare."""
     turns: list[dict] = []  # ordered {role, ts, text} for in-slice events
     cwd = None
     git_branch = None
@@ -75,7 +81,7 @@ def process(jsonl_path: Path, since_iso: str | None) -> dict | None:
                 if ts:
                     session_started = session_started or ts
                     session_ended = ts
-                in_slice = (not since_iso) or (ts >= since_iso)
+                in_slice = (not cutoff_z) or (_ts_to_seconds(ts) >= cutoff_z)
                 if t == "user":
                     msg = ev.get("message") or {}
                     content = msg.get("content")
@@ -107,7 +113,7 @@ def process(jsonl_path: Path, since_iso: str | None) -> dict | None:
     if n_user == 0:
         return None
 
-    is_carryover = bool(since_iso) and bool(session_started) and (session_started < since_iso)
+    is_carryover = bool(cutoff_z) and bool(session_started) and (_ts_to_seconds(session_started) < cutoff_z)
 
     return {
         "session": jsonl_path.stem,
@@ -126,8 +132,8 @@ def process(jsonl_path: Path, since_iso: str | None) -> dict | None:
     }
 
 
-def _last_run_date() -> str | None:
-    """Return the date (YYYY-MM-DD) of the most recent distill-history entry, or None."""
+def _last_run_anchor() -> str | None:
+    """Return the full ISO timestamp of the most recent distill-history entry, or None."""
     if not HISTORY.exists():
         return None
     last = None
@@ -138,9 +144,14 @@ def _last_run_date() -> str | None:
     return last
 
 
+def _to_utc_compare(iso_str: str) -> str:
+    """Normalize any ISO-8601 timestamp to seconds-precision UTC 'Z' for lexical compare against transcript ts."""
+    s = iso_str.replace("Z", "+00:00")
+    return dt.datetime.fromisoformat(s).astimezone(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 def _append_history(since_iso: str | None, n_sessions: int, n_projects: int, raw_bytes: int, distilled_bytes: int) -> None:
-    import datetime as dt
-    now = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
+    now = dt.datetime.now(LOCAL_TZ).isoformat(timespec="minutes")
     since_str = f"since {since_iso}" if since_iso else "full"
     line = (
         f"- {now} — {since_str} — "
@@ -156,11 +167,14 @@ def _append_history(since_iso: str | None, n_sessions: int, n_projects: int, raw
 
 def main(since_iso: str | None, project_filters: list[str]) -> None:
     if since_iso is None:
-        since_iso = _last_run_date()
+        since_iso = _last_run_anchor()
         if since_iso:
             print(f"(default --since {since_iso} from distill-history.md)")
         else:
             print("(no distill-history.md; doing full distill)")
+    elif "T" not in since_iso:  # bare YYYY-MM-DD → local midnight
+        since_iso = dt.datetime.fromisoformat(since_iso).replace(tzinfo=LOCAL_TZ).isoformat(timespec="minutes")
+    cutoff_z = _to_utc_compare(since_iso) if since_iso else None
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     project_dirs = [p for p in sorted(PROJECTS.iterdir()) if p.is_dir()] if PROJECTS.is_dir() else []
     if project_filters:
@@ -177,7 +191,7 @@ def main(since_iso: str | None, project_filters: list[str]) -> None:
     for f in files:
         if f.name.startswith("agent-"):
             continue  # subagent files; their content is also in parent
-        rec = process(f, since_iso)
+        rec = process(f, cutoff_z)
         if not rec:
             continue
         n_sessions += 1
@@ -247,16 +261,19 @@ def _render_md(cwd: str, recs: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def _mtime_floor(date: str) -> float:
-    import datetime as dt
-    d = dt.datetime.strptime(date, "%Y-%m-%d").replace(tzinfo=dt.timezone.utc)
+def _mtime_floor(iso_str: str) -> float:
+    s = iso_str.replace("Z", "+00:00")
+    if "T" not in s:  # bare date → local midnight
+        d = dt.datetime.fromisoformat(s).replace(tzinfo=LOCAL_TZ)
+    else:
+        d = dt.datetime.fromisoformat(s)
     return d.timestamp()
 
 
 if __name__ == "__main__":
     import argparse
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--since", help="YYYY-MM-DD lower bound on message timestamps")
+    ap.add_argument("--since", help="lower bound on message timestamps; YYYY-MM-DD (interpreted as local midnight) or full ISO with offset (e.g. 2026-05-06T15:24+08:00)")
     ap.add_argument("--project", action="append", default=[],
                     help="substring match against project folder name; repeatable; omit to include all")
     args = ap.parse_args()

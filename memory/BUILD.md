@@ -2,6 +2,12 @@
 
 Recipes for building and maintaining the long-term memory system.
 
+## ARCHITECTURE
+
+- `promoted.md` — source of truth. Curated claims under H2 themes.
+- `pages/{index.md,<slug>.md}` — runtime memory, exploded from promoted.md by pages.py. Loaded into sessions via @-include in CLAUDE.md.
+- `pending.md`, `cleaned.md`, `rejected.md`, `distilled/*`, `distill-history.md` — pipeline artifacts. Consulted only during the build pipeline.
+
 ## INIT INSTRUCTION
 
 Mine my Claude Code transcripts at ~/.claude/projects/**/*.jsonl into a curated long-term memory file ~/.claude/memory/promoted.md, intended for @-include in ~/.claude/CLAUDE.md.
@@ -46,12 +52,12 @@ Incremental update of ~/.claude/memory/. Same KEEP/DROP rules and FALSE-NEGATIVE
 
   CONTEXT — do NOT re-extract claims already present in any of:
   - promoted.md, pending.md, rejected.md, cleaned.md
-  - distill.py — anchors `--since` on distill-history.md
+  - distill.py — anchors `--since` on distill-history.md (minus 5 hours margin)
   - promote.py — merge-mode (carryover preserved, dedup by claim text)
 
   PIPELINE:
 
-  1. DISTILL: `~/.claude/memory/distill.py`. Outputs `~/.claude/memory/distilled/<slug>.md`, one per project cwd. Pass `--since YYYY-MM-DD` to override the auto-anchor.
+  1. DISTILL: `~/.claude/memory/distill.py`. Outputs `~/.claude/memory/distilled/<slug>.md`, one per project cwd. Pass `--since YYYY-MM-DD` (local midnight) or full ISO with offset (`2026-05-06T15:24+08:00`) to override the auto-anchor.
 
   2. EXTRACT in parallel (one general-purpose subagent per .md). Each agent reads its assigned .md and writes bullets to `/tmp/memory-extract/<slug>.md` in the same format as INIT step 2. Give each agent the H2 theme list of promoted.md.
 
@@ -89,11 +95,11 @@ For each entry pruned:
   - If a durable kernel survives (methodology, conclusion, sweet-spot rule), keep that kernel and drop the specifics.
   - Otherwise delete the bullet entirely.
 
-Write the originals (verbatim) into ~/.claude/memory/cleaned.md, grouped under their original section headers, each entry followed by a one-line deletion reason in parentheses. Then head to BUILD INDEX.
+Write the originals (verbatim) into cleaned.md, grouped under their original section headers, each entry followed by a one-line deletion reason in parentheses. Then head to BUILD INDEX.
 
 ## AUDIT INSTRUCTION
 
-Audit H2 classification in ~/.claude/memory/promoted.md. Section titles must be recall-friendly: title alone tells a future Claude which H2 to open.
+Audit H2 classification in promoted.md. Section titles must be recall-friendly: title alone tells a future Claude which H2 to open.
 
 Find and fix:
 1. Catch-all sections (Misc, "quality", grab-bags) — redistribute their bullets, or split off a coherent subtheme of ≥3 bullets into its own H2.
@@ -109,9 +115,11 @@ After editing promoted.md, head to BUILD INDEX.
 
 ## BUILD INDEX
 
-Run `~/.claude/memory/pages.py`. Explodes promoted.md into one page per H2 topic under ~/.claude/memory/pages/{index.md,<slug>.md}. Prunes pages whose topics were removed.
+Run pages.py. Explodes promoted.md into one page per H2 topic under ~/.claude/memory/pages/{index.md,<slug>.md}. Prunes pages whose topics were removed.
 
 First-time setup: add `@memory/pages/index.md` to ~/.claude/CLAUDE.md (path is relative to CLAUDE.md's directory).
+
+After each distill action, append distill-history.md with local timestamp [YYYY-MM-DD]T[HH:MM]+08:00.
 
 ## SCRIPTS TO USE
 
