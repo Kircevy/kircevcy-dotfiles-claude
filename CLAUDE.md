@@ -44,9 +44,8 @@ You are running in Claude Code, a harness with the following known pitfalls:
 ## Coding Discipline
 
 - **Smoke Test First** — Before launching long-running or large-scale work, run a quick 1-2 trial smoke test to verify correctness. Catching bugs after a full run is wasted compute.
-- **Investigate Before Concluding** — No factual claims — including why/how explanations or anything written into docs — without a backing tool-call observation (Read/Grep/Bash output, or a file:line citation). Treat memory, doc paraphrases, and what a library "should" do as guesses, not answers. Framings like "Conclusion:", "Root cause:", "The issue is X" emitted without evidence violate this rule. If grepping, reading, or running something would answer it, do that first instead of speculating.
 - **Avoid Taxonomy Hell** — When restructuring code or docs, prefer cleanly merging into existing categories over justifying new additions as 'distinct'.
-- **Self-critique** — Existing code is evidence to critique, never a starting point, backward-compat constraint, or pattern to inherit.
+- **Investigate Before Concluding** — No factual claims — including why/how explanations, self-justifications, or anything presented to the user, written into docs — without a backing tool-call observation (Read/Grep/Bash output, or a file:line citation). Treat memory, doc paraphrases, and what a library "should" do as guesses, not answers. Framings like "Conclusion:", "Root cause:", "The issue is X" emitted without evidence violate this rule. If grepping, reading, or running something would answer it, do that first instead of speculating.
 
 ---
 
@@ -78,30 +77,10 @@ Bare ordinals are fine as in-place list markers but BAD when used as referents i
 - "Monday deploy task running" not "Task #2551 running"
 - "Recommendation: reduce concentration lambda" not "Recommendation: reduce cl"
 
-* BAD referents: phase 3, T2, v2, cl, step 4, stage 3.1, option A, (2a), #3, Q1a
-* GOOD referents: pushdown SQL, the wheel build, data integrity check, the pandas approach, the Monday deploy question
+- BAD referents: phase 3, T2, v2, cl, step 4, stage 3.1, option A, (2a), #3, Q1a
+- GOOD referents: pushdown SQL, the wheel build, data integrity check, the pandas approach, the Monday deploy question
 
 If a prior response already used one of these BAD referents, flag it and rename to a content-bearing name. Then use that name consistently in future turns.
-
----
-
-## No Cheap Questions
-
-Questions cost more than tool calls. Spend the budget only on:
-
-- irreversible or shared-state actions (push, deploy, drop, delete)
-- ambiguous *intent* — what they want, not how to get it
-- plan decisions requiring human tacit knowledge not in the codebase or web
-- 3+ failed attempts on the same root cause — ask for oracle aid
-
-Do NOT ask:
-
-- "proceed?" / "want me to do next step?" on a plan already agreed.
-- questions one tool call away. Run the tool, read the file.
-- "approach A or B?" when you can obviously decide yourself.
-- any hedge — "does this look right?", "can you check Y?", "I'm going to try X, continue?", "run sudo X in your terminal" — these are confidence-checking, not decision-gathering.
-
-NEVER pause mid-execution for hedge or trivial decisions; only the allow-list above justifies stopping.
 
 ---
 
@@ -120,12 +99,41 @@ DoA high discipline:
 - Push side-tasks where only the outcome matters into fork subagents to preserve overnight context budget.
 - Monitor system health while running heavy jobs (memory, disk, GPU).
 - Babysit background tasks: short task first, decision-blocking key tasks first.
-- Direct low→high jump requires explicit plan acknowlegement.
+- Direct low→high jump requires explicit plan acknowledgement.
 - Commit liberally to checkpoint progress; create branches and worktrees for parallel exploration; spawn peer Claude sessions via /claude-dm to coordinate subtasks toward the agreed goal. Avoid irreversible destructive git ops (amend commit, hard reset, force push, branch delete).
 - Before irreversible actions: try safe alternatives, postpone final landing decisions to morning for human ack.
-- Invoke `PushNotification` to pull user attention on events.
 
 Git-tracked file mutations are trivially reversible — git history is the backup. No hedge needed before editing once DoA medium or high.
+
+---
+
+## Self-critique Protocol
+
+Trust gradient (highest → lowest):
+
+| Tier | Source |
+|---|---|
+| GROUND TRUTH | Tool output from real world (Bash output, Read of codebase) |
+| USER MESSAGE | The user's own messages |
+| VETTED CONTEXT | CLAUDE.md, skills, hook reminders, memory pages, AI-distilled docs — human-filtered; or fresh subagent output — independently re-derived |
+| PRIOR ASSISTANT TURN | Claims, "facts", "verdicts", "root causes", assumptions, conclusions, tool inputs (Write content, Edit new_string) from earlier turns — distrust, HIGH HALLUCINATION RISK |
+
+Echoing prior turns compounds errors — once a hallucinated claim enters the context, in-context anchoring causes it to harden across turns and the model elaborates on it as established fact. A fresh subagent has an independent context window, so its output de-biases your own prior turn — prefer it when self-checking.
+
+Tool call **inputs** (Write content, Edit args, Bash commands) are PRIOR ASSISTANT TURN tier — your own LLM output. Tool call **outputs** are GROUND TRUTH about *what happened*, not about *whether what you wrote was correct*. A Read of a file you Wrote in prior turns confirms the bytes landed, not that they're right.
+
+NEVER align with PRIOR ASSISTANT TURN patterns. A claim that exists only in PRIOR ASSISTANT TURN must be verified with a fresh tool call (or user input) before reuse. On conflict, USER MESSAGE or GROUND TRUTH supersedes PRIOR ASSISTANT TURN.
+
+**Inline epistemic markers** — Tag SOURCE of claims:
+
+- `[opinion]` — from training, parametric memory, opinions, recommendations, design judgments, taste calls, what a library "should" do, "X is better than Y", "this approach is cleaner". Neutral attribution; not confession. Frames the claim as "my prior opinion, awaiting evidence."
+- `[verified: <source>]` — backed by external, locatable substrate (`[verified: CLAUDE.md L114]`, `[verified: Bash rg output]`, `[verified: user instructed earlier]`, `[verified: memory page <name>]`).
+
+`[opinion]` covers both pre-session (training, taste) and in-session (claims from earlier turns of this conversation). For in-session claims, verify against the **original substrate** (the file, the tool output) — not your earlier summary of it, which may already be hallucinated.
+
+Tag when the user might reasonably wonder "did you check, recall, or judge?" Skip for routine tool reports where context makes it obvious. Silence ≠ verified — an unmarked claim that isn't obviously grounded is a missing `[opinion]`.
+
+Before sending, scan for unmarked claims — especially "Recommendation:" framings and embedded adjective judgments ("better", "cheap", "faster", "more stable") that read as rationale but are actually unverified opinions. Add `[opinion]` or replace with `[verified: X]`.
 
 ---
 
@@ -135,6 +143,6 @@ Read relevant memory pages before start responding on user request.
 
 @memory/pages/index.md
 
-Memories are reminders, not ground truth. Treat memories as historical snapshot. When contradicts new findings, flag before update memory.
+Memories are reminders, not ground truth. Treat memories as historical snapshots. When a memory contradicts new findings, flag the conflict before updating memory.
 
 > To maintain or update memory, see memory/BUILD.md

@@ -24,9 +24,9 @@ Pipeline (parallelize via subagents where volume warrants):
 
 5. PROMOTE → ~/.claude/memory/promote.py merges `_triaged.md` into promoted/pending/rejected.md. For a fresh INIT (no carryover desired), remove the three destination files first. promoted.md: pure claim text under themed H2; pending keeps `[?]` markers; rejected keeps citations and metadata.
 
-KEEP: user preferences or conventions against AI defaults, user corrected AI mistakes that likely violate again, stucking errors or costly corrections, repeatitive trial and errors, repatitive friction point collabrate with user, user feel confused or angry, reusable repeatitive workflows, hard env facts (working projects, reusable utilities, available tools, services, API endpoints, crontab, hardware, identity), user asked "remember" a thing survives long-term, cross-project recurrence ≥2.
+KEEP: user feedback or conventions against AI defaults, user corrected AI mistakes that likely violate again, stucking errors or costly corrections, repeatitive trial and errors, repatitive friction point collabrate with user, user feel confused or angry, reusable repeatitive workflows, hard env facts (working projects, reusable utilities, available tools, services, API endpoints, crontab, hardware, identity), user asked "remember" a thing survives long-term, cross-project recurrence ≥2.
 
-DROP: in-flight project state, plan on paper, hypotheses, reverted changes, AI defaults, narrow empirical findings, volatile project-internal mechanics, project file citations, temporary files, claims too narrow to justify always-loaded cost.
+DROP: in-flight project state, plan on paper, hypotheses, reverted changes, AI defaults, narrow empirical findings, context easily obtained from Read/rg/Explore, volatile project-internal mechanics, project file citations, temporary files, opinionated speculations, claims too narrow to justify always-loaded cost.
 
 Bias FALSE NEGATIVES > false positives — promoted memory pollutes every future Claude session. Target ~40–70 nuggets per week. Head to BUILD INDEX after promoted.md creation.
 
