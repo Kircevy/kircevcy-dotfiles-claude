@@ -1,6 +1,6 @@
 # frontend-design references
 
-Curated library distilled from the open-design / awesome-design-md / huashu-design lineage. **Optional, lazy-loaded.** Default behavior of `frontend-design` is first-principles fresh design; consult these only when the user names a specific brand, aesthetic, or device.
+Curated library distilled from the open-design / awesome-design-md / huashu-design lineage. **Optional, lazy-loaded.** Default behavior of `frontend-design` is first-principles fresh design; consult these only when the user names a specific brand, aesthetic, or device, or explicitly asks to see what aesthetic options are available.
 
 ## Layout
 
@@ -41,7 +41,7 @@ Either:
 - User gives a fresh aesthetic direction not in the library → design from scratch per `SKILL.md`.
 - User says "surprise me" / "your taste" / "be creative" → pick freely; do not anchor on the library.
 - Small components / utilities where pulling a full deck spec is overkill.
-- Any prompt that doesn't name something matchable → first-principles wins.
+- Any prompt that doesn't name something matchable **and** isn't asking for option-browsing → first-principles wins.
 
 ## Discovery pattern
 
