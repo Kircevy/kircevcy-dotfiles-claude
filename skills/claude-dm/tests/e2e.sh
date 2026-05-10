@@ -76,12 +76,14 @@ tmux -S "$SOCK" send-keys -t t:0.0 C-u
 sleep 1
 wait_state t:0.0 idle 30 || fail "not idle before /compact"
 "$CLAUDE_DM" cmd t:0.0 "/compact"
-# Dogfood `wait`: poll peer_state via the verb itself; expect DONE (which
-# requires idle + transcript end_turn, matching safe_to_dm) within 180s.
-# Captures stdout-sentinel + exit-code contract in one assertion.
-sentinel=$("$CLAUDE_DM" wait t:0.0 2 180) || fail "wait timed out / errored after /compact"
-[[ "$sentinel" == "DONE" ]] || fail "expected DONE sentinel, got '$sentinel'"
-pass "cmd /compact + wait DONE"
+# Dogfood `wait`: poll peer_state via the verb itself; expect first line
+# DONE (idle + transcript end_turn, matching safe_to_dm) and a trailing
+# `hint:` line within 180s. Captures the full sentinel-plus-hint contract.
+out=$("$CLAUDE_DM" wait t:0.0 2 180) || fail "wait timed out / errored after /compact"
+first="${out%%$'\n'*}"
+[[ "$first" == "DONE" ]] || fail "expected DONE on first line, got '$first' (full: $out)"
+grep -q '^hint:' <<<"$out" || fail "expected re-arm hint line, got: $out"
+pass "cmd /compact + wait DONE+hint"
 
 # The `answer` verb is NOT covered automatically because triggering a
 # permission modal depends on the peer's settings (defaultMode, allowed-tools)

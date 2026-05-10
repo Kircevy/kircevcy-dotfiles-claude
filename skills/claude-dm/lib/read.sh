@@ -58,7 +58,8 @@ dm_tail() {
   '
 }
 
-# Block until peer reaches a terminal state, then emit one sentinel line.
+# Block until peer reaches a terminal state, then emit a sentinel line
+# followed by a `hint:` line that tells the orchestrator agent to re-arm.
 # DONE  — peer satisfies the same gate as safe_to_dm: pane title is ✳
 #         AND the transcript's last assistant turn is end_turn (no pending
 #         tool_use). Title-idle alone is not enough — UI can briefly show ✳
@@ -82,10 +83,18 @@ dm_wait() {
         # non-end_turn assistant turn (tool result pending). Match safe_to_dm:
         # require both signals before declaring DONE; otherwise keep polling.
         if check_transcript_end_turn "$target" >/dev/null; then
-          printf 'DONE\n'; return 0
+          printf 'DONE\n'
+          # Hint to the orchestrator agent: this verb is one-shot — after
+          # dispatching the next action, restart `wait` to watch the next turn.
+          printf 'hint: peer reached idle. After dispatching the next action, re-arm with: claude-dm wait %s\n' "$target"
+          return 0
         fi
         ;;
-      modal) printf 'MODAL\n'; return 0 ;;
+      modal)
+        printf 'MODAL\n'
+        printf 'hint: peer needs intervention. Inspect with `claude-dm status %s`; after resolving via `answer`/`esc`/`send`, re-arm with: claude-dm wait %s\n' "$target" "$target"
+        return 0
+        ;;
     esac
     if (( timeout > 0 && elapsed >= timeout )); then
       warn "timeout after ${timeout}s (state=$state)"

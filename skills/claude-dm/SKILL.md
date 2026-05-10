@@ -130,8 +130,8 @@ claude-dm wait HOME:8.1                    # 30s polls, no timeout, blocks until
 claude-dm wait HOME:8.1 10 600             # 10s polls, give up after 10 min
 ```
 Output is one of:
-- `DONE` — peer passes the same gate as `safe_to_dm`: pane title `✳` AND transcript's last assistant turn is `end_turn`. Title-idle alone is not enough; the loop keeps polling while a tool result is still pending so DONE never fires mid-turn. Safe to follow with `send` / `cmd`.
-- `MODAL` — peer hit a permission / AskUserQuestion modal (resolve with `status` + `answer` / `esc`)
+- `DONE` — peer passes the same gate as `safe_to_dm`: pane title `✳` AND transcript's last assistant turn is `end_turn`. Title-idle alone is not enough; the loop keeps polling while a tool result is still pending so DONE never fires mid-turn.
+- `MODAL` — peer hit a permission / AskUserQuestion modal.
 
 Exit 1 (no stdout sentinel) on timeout or if the peer pane vanishes.
 
