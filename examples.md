@@ -122,3 +122,32 @@ Before sending: my recall is unverified. Reading the file to upgrade or correct.
 <Bash>rg -n "N_RETRY" src/rate_limiter.py</Bash>
 Retry budget is actually 3 `[verified: src/rate_limiter.py L8: N_RETRY = 3]` — prior recall was wrong.
 </good-example>
+
+<bad-example>
+<User>What's the breakdown of tool-output bytes across my recent Claude Code sessions?</User>
+<Write>/tmp/extract.jq</Write>
+<Bash>fd jsonl --changed-within 3d -X jq ... | head -5</Bash>
+<Bash>jq aggregation across all sessions</Bash>
+<Write>/tmp/classify.py</Write>
+<Bash>uv run /tmp/classify.py</Bash>
+<Bash>uv run /tmp/classify.py --by-tool</Bash>
+(8 inline tool calls; intermediate jq/python outputs pin to main context and get re-read at amp ~30× on every subsequent turn)
+Here's the breakdown: Read=49%, Bash=39%, WebFetch=7.6%, ...
+</bad-example>
+
+<good-example>
+<User>What's the breakdown of tool-output bytes across my recent Claude Code sessions?</User>
+This is a survey — forking it so the intermediate jq/python output stays out of main context.
+<Agent description="Tool-byte breakdown survey" prompt="Survey tool_result bytes from ~/.claude/projects/**/*.jsonl over the last 3 days. Attribute each tool_result to its tool_name via tool_use_id. Group by tool name, return ONE markdown table with columns: tool | calls | KB total | KB/call | %. Top 10; collapse the rest into one 'everything else' row. One-line verdict at the bottom. Under 200 words."></Agent>
+[fork runs offsite — its 8 intermediate tool calls never enter main context]
+
+Here's the breakdown (from the survey fork):
+
+| tool | calls | KB total | KB/call | % |
+|---|---|---|---|---|
+| Read | 798 | 3,389 | 4.2 | 49% |
+| Bash | 3,118 | 2,665 | 0.85 | 39% |
+| ... | ... | ... | ... | ... |
+
+**Verdict** Read+Bash = 88% of tool-output bytes `[verified: table above: Read 49% + Bash 39%]`; mid-tier is WebFetch (rare but expensive per call) `[opinion]`.
+</good-example>

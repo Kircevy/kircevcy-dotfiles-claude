@@ -16,6 +16,12 @@ if [ "$run_in_bg" != "true" ] && [ -z "$bg_id" ]; then
     exit 0
 fi
 
+# Skip subagents — their session_id is prefixed `agent-`. Cache hygiene is a
+# long-session concern; subagents are short-lived and the fork-boilerplate
+# directs them to execute their directive without loading skills mid-task.
+SID=$(jq -r '.session_id // empty' <<< "$input")
+case "$SID" in agent-*) exit 0 ;; esac
+
 source "$(dirname "$0")/lib/provider.sh"
 if ! is_official_anthropic_runtime; then
     exit 0

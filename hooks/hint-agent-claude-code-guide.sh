@@ -15,6 +15,7 @@ set -euo pipefail
 
 source "$(dirname "$0")/lib/emit.sh"
 source "$(dirname "$0")/lib/read_input.sh"
+source "$(dirname "$0")/lib/session_lock.sh"
 
 read_file_path
 
@@ -35,9 +36,18 @@ case "$file_path" in
 esac
 
 SID=$(jq -r '.session_id // "unknown"' <<< "$input")
+
+# Skip subagents — agent-* prefix on session_id. The hint asks Claude to
+# spawn the claude-code-guide subagent via the Agent tool, but most
+# subagents (code-review, doc-review, ai-slop-review, claude-code-guide
+# itself, web-researcher, Explore, Plan, codex-rescue, statusline-setup)
+# don't have the Agent tool and can't act on this advice.
+case "$SID" in agent-*) exit 0 ;; esac
+
 CACHE_DIR=/tmp/claude-hint-agent-claude-code-guide
 CACHE="$CACHE_DIR/$SID"
 mkdir -p "$CACHE_DIR"
+reset_on_compact "$SID" "$CACHE_DIR" "$CACHE"
 [ -f "$CACHE" ] && exit 0
 touch "$CACHE"
 

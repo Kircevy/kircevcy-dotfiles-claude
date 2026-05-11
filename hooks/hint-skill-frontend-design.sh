@@ -10,6 +10,7 @@ set -euo pipefail
 
 source "$(dirname "$0")/lib/emit.sh"
 source "$(dirname "$0")/lib/read_input.sh"
+source "$(dirname "$0")/lib/session_lock.sh"
 
 read_file_path
 
@@ -19,9 +20,16 @@ case "$file_path" in
 esac
 
 SID=$(jq -r '.session_id // "unknown"' <<< "$input")
+
+# Skip subagents — agent-* prefix on session_id. Main agent gets the nudge
+# before authoring user-facing HTML; subagents that emit HTML are usually
+# short-lived utilities where the skill load isn't worth the context cost.
+case "$SID" in agent-*) exit 0 ;; esac
+
 CACHE_DIR=/tmp/claude-skill-hint-frontend-design
 CACHE="$CACHE_DIR/$SID"
 mkdir -p "$CACHE_DIR"
+reset_on_compact "$SID" "$CACHE_DIR" "$CACHE"
 [ -f "$CACHE" ] && exit 0
 touch "$CACHE"
 

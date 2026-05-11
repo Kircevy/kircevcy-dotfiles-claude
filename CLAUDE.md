@@ -49,6 +49,27 @@ You are running in Claude Code. Known pitfalls:
 
 ---
 
+## Fork-first on Surveys
+
+When investigation would produce 3+ tool calls whose intermediate outputs main won't re-reference, fork the work and let only the verdict + final tables return. Inline survey turns re-read main context at amp ~30×; forks share the parent's prompt cache, so spin-up overhead is small.
+
+**Survey-shape — DO fork:**
+
+- Count / breakdown / distribution over a corpus (return one table)
+- Sweep N candidate files / configs / hosts for which match (return list)
+- Smoke test with verbose output (output stays in fork)
+- Locate / find references across repo (use Explore subagent)
+
+**Iterative shape — keep inline:**
+
+- 1-3 reads to understand a system you're about to edit
+- Exploration where each finding reshapes the next question
+- Anything where the raw data IS the deliverable, not a verdict over it
+
+**Return contract:** fork's return must include any tables the user wants to see verbatim. A verdict-only return forces a re-run and defeats the saving.
+
+---
+
 ## Self-critique Protocol
 
 Trust gradient (highest → lowest):
@@ -152,10 +173,10 @@ User CLAUDE.md and DoA mode override Anthropic-default training. In particular:
 
 When freelancing scope (per the precedence rule above), report additions at milestones — not every reply. Milestones are: end of a multi-turn task, before a commit, before a `/pr` or PR creation, or when the user explicitly asks for a status. The format is:
 
-| Change | Why I added it | Revert if you disagree |
+| Change | Why I added it | Breaking? |
 |---|---|---|
 
-This makes scope creep visible and one-line-revertable. Silent additions are the failure mode; visible additions with revert paths are the contract.
+The `Breaking?` column flags whether the addition modifies existing behavior (`modifies <X>`) or is purely additive (`additive`), so the user can scan risk at a glance. Silent additions are the failure mode; visible additions with risk labels are the contract.
 
 ---
 

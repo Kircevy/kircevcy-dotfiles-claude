@@ -6,6 +6,12 @@ set -euo pipefail
 input=$(cat)
 source "$(dirname "$0")/lib/emit.sh"
 
+# Skip subagents — agent-* prefix on session_id. The WebFetch fallback chain
+# advice targets main-agent investigation; subagents typically perform a
+# single search and return.
+SID=$(jq -r '.session_id // ""' <<< "$input")
+case "$SID" in agent-*) exit 0 ;; esac
+
 # Skip if the search returned no results — nothing to follow up on.
 result_count=$(echo "$input" | jq -r '[.tool_response.results[]?] | length')
 [ "$result_count" -gt 0 ] || exit 0

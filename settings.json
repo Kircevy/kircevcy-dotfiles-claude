@@ -269,6 +269,16 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/prefer-limited-read.sh",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -351,6 +361,16 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": "Bash|Read|Grep|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/hint-fork-on-bloat.sh",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "Stop": [
@@ -401,6 +421,18 @@
           {
             "type": "command",
             "command": "bash ~/.claude/hooks/inject-system-load.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "matcher": "manual|auto",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/compact-bump.sh",
             "timeout": 5
           }
         ]

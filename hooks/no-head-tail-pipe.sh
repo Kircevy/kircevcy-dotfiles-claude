@@ -9,6 +9,7 @@ set -euo pipefail
 
 source "$(dirname "$0")/lib/emit.sh"
 source "$(dirname "$0")/lib/read_input.sh"
+source "$(dirname "$0")/lib/session_lock.sh"
 
 read_bash_command
 
@@ -22,6 +23,7 @@ SID=$(jq -r '.session_id // "unknown"' <<< "$input")
 CACHE_DIR=/tmp/claude-hint-no-head-tail-pipe
 CACHE="$CACHE_DIR/$SID"
 mkdir -p "$CACHE_DIR"
+reset_on_compact "$SID" "$CACHE_DIR" "$CACHE"
 [ -f "$CACHE" ] && exit 0
 touch "$CACHE"
 

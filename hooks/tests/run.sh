@@ -474,6 +474,34 @@ done
 
 rm -f "$nht_cache" "$nht_cache2"
 
+# Compact-reset: PostCompact bump should re-arm the one-shot so the hint
+# fires again after auto-compact. Behavioral lessons get summarized away
+# along with their context, so re-prompting on repeated anti-patterns
+# post-compact catches the forgetting.
+nht_sid_cmp="nht-cmp-$$"
+rm -rf "$nht_cache_dir" /tmp/claude-compact-events
+# First fire — gen=0, hint emitted.
+out=$(printf '%s' "$(jq -nc --arg s "$nht_sid_cmp" '{session_id:$s,tool_input:{command:"ls | head"}}')" \
+       | bash ~/.claude/hooks/no-head-tail-pipe.sh)
+echo "$out" | jq -e '.hookSpecificOutput.additionalContext | contains("truncates by line position")' > "$test_out" \
+  && echo "OK:   no-head-tail-pipe first fire (compact-rearm setup)" \
+  || { echo "FAIL: no-head-tail-pipe first fire for compact test: $out"; fail=1; }
+# Second fire same session — silent (one-shot still in effect).
+out=$(printf '%s' "$(jq -nc --arg s "$nht_sid_cmp" '{session_id:$s,tool_input:{command:"ls | head"}}')" \
+       | bash ~/.claude/hooks/no-head-tail-pipe.sh)
+[ -z "$out" ] \
+  && echo "OK:   no-head-tail-pipe silent before compact (compact-rearm setup)" \
+  || { echo "FAIL: no-head-tail-pipe should be silent before compact: $out"; fail=1; }
+# Simulate compaction.
+printf '{"session_id":"%s"}' "$nht_sid_cmp" | bash ~/.claude/hooks/compact-bump.sh
+# Same session, post-compact — hint re-fires.
+out=$(printf '%s' "$(jq -nc --arg s "$nht_sid_cmp" '{session_id:$s,tool_input:{command:"ls | head"}}')" \
+       | bash ~/.claude/hooks/no-head-tail-pipe.sh)
+echo "$out" | jq -e '.hookSpecificOutput.additionalContext | contains("truncates by line position")' > "$test_out" \
+  && echo "OK:   no-head-tail-pipe re-fires after compact-bump" \
+  || { echo "FAIL: no-head-tail-pipe should re-fire after compact: $out"; fail=1; }
+rm -rf "$nht_cache_dir" /tmp/claude-compact-events
+
 # no-bg-head-tail-pipe: hard-deny when run_in_background=true with trailing
 # `| head` / `| tail`. Foreground commands (handled by no-head-tail-pipe) and
 # intermediate `| head | wc` are pass-through.
@@ -659,6 +687,10 @@ echo "$out" | jq -e '.hookSpecificOutput.additionalContext | contains("WebFetch"
 out=$(printf '%s' '{"tool_response":{"results":[]}}' | bash ~/.claude/hooks/websearch-followup-hint.sh)
 [ -z "$out" ] && echo "OK:   websearch (0 results) silent" || { echo "FAIL: websearch 0 results: $out"; fail=1; }
 
+# Subagent skip: agent-* session_id silences the followup hint even with results.
+out=$(printf '%s' '{"session_id":"agent-deadbeef","tool_response":{"results":[{"url":"https://x","title":"X"}]}}' | bash ~/.claude/hooks/websearch-followup-hint.sh)
+[ -z "$out" ] && echo "OK:   websearch silent in subagent (agent-* sid)" || { echo "FAIL: websearch should skip subagent: $out"; fail=1; }
+
 assert_context reread-after-edit '{"tool_input":{"file_path":"/tmp/x.md"}}' "/tmp/x.md"
 assert_context reread-after-edit '{"tool_input":{"file_path":"/tmp/x.py"}}' "/tmp/x.py"
 # Basename special-case: CMakeLists.txt routes to CODE despite the .txt extension.
@@ -683,6 +715,8 @@ assert_context_env cache-keepalive-hint '{"tool_name":"Bash","tool_input":{"run_
 assert_silent_env cache-keepalive-hint '{"tool_name":"Bash","tool_input":{"run_in_background":true,"command":"sleep 60"}}' ANTHROPIC_BASE_URL "https://api.deepseek.com/anthropic"
 assert_silent_env cache-keepalive-hint '{"tool_name":"Agent","tool_input":{"run_in_background":true}}' ANTHROPIC_DEFAULT_MODEL "gpt-5.4"
 assert_silent cache-keepalive-hint '{"tool_name":"Bash","tool_input":{"command":"ls"},"tool_response":{}}'
+# Subagent session_id (agent-* prefix): silent even on backgrounded Bash.
+assert_silent cache-keepalive-hint '{"session_id":"agent-deadbeef1234","tool_name":"Bash","tool_input":{"run_in_background":true,"command":"sleep 60"}}'
 
 # prefer-uv-run: fires on bare python3; silent when uv run is already used
 assert_context prefer-uv-run '{"tool_input":{"command":"python3 foo.py"}}' "uv run python"
@@ -864,6 +898,33 @@ echo "$out" | jq -e '.hookSpecificOutput.additionalContext | contains("frontend-
 
 rm -f "$hsfd_cache" "$hsfd_cache2" "/tmp/claude-skill-hint-frontend-design/$hsfd_sid3"
 
+# Subagent skip: agent-* session_id silences the hint.
+out=$(printf '%s' "$(jq -nc '{session_id:"agent-deadbeef",tool_input:{file_path:"/tmp/x.html",content:"<html/>"}}')" \
+       | bash ~/.claude/hooks/hint-skill-frontend-design.sh)
+[ -z "$out" ] \
+  && echo "OK:   hint-skill-frontend-design silent in subagent (agent-* sid)" \
+  || { echo "FAIL: hint-skill-frontend-design should skip subagent: $out"; fail=1; }
+
+# Compact-reset: PostCompact bump re-arms the one-shot post-compact.
+hsfd_sid_cmp="hsfd-cmp-$$"
+rm -rf /tmp/claude-skill-hint-frontend-design /tmp/claude-compact-events
+out=$(printf '%s' "$(jq -nc --arg s "$hsfd_sid_cmp" '{session_id:$s,tool_input:{file_path:"/tmp/a.html",content:"<html/>"}}')" \
+       | bash ~/.claude/hooks/hint-skill-frontend-design.sh)
+echo "$out" | jq -e '.hookSpecificOutput.additionalContext | contains("frontend-design")' > "$test_out" \
+  && echo "OK:   hint-skill-frontend-design first fire (compact-rearm setup)" \
+  || { echo "FAIL: hint-skill-frontend-design first fire for compact test: $out"; fail=1; }
+out=$(printf '%s' "$(jq -nc --arg s "$hsfd_sid_cmp" '{session_id:$s,tool_input:{file_path:"/tmp/b.html",content:"<html/>"}}')" \
+       | bash ~/.claude/hooks/hint-skill-frontend-design.sh)
+[ -z "$out" ] && echo "OK:   hint-skill-frontend-design silent before compact" \
+  || { echo "FAIL: hint-skill-frontend-design pre-compact silent: $out"; fail=1; }
+printf '{"session_id":"%s"}' "$hsfd_sid_cmp" | bash ~/.claude/hooks/compact-bump.sh
+out=$(printf '%s' "$(jq -nc --arg s "$hsfd_sid_cmp" '{session_id:$s,tool_input:{file_path:"/tmp/c.html",content:"<html/>"}}')" \
+       | bash ~/.claude/hooks/hint-skill-frontend-design.sh)
+echo "$out" | jq -e '.hookSpecificOutput.additionalContext | contains("frontend-design")' > "$test_out" \
+  && echo "OK:   hint-skill-frontend-design re-fires after compact-bump" \
+  || { echo "FAIL: hint-skill-frontend-design should re-fire after compact: $out"; fail=1; }
+rm -rf /tmp/claude-skill-hint-frontend-design /tmp/claude-compact-events
+
 
 # hint-agent-claude-code-guide: nudge the agent to consult the
 # claude-code-guide subagent before editing settings.json /
@@ -967,6 +1028,34 @@ rm -f "$hccg_cache" \
       "/tmp/claude-hint-agent-claude-code-guide/$hccg_sid7" \
       "/tmp/claude-hint-agent-claude-code-guide/$hccg_sid8"
 
+# Subagent skip: agent-* session_id silences the hint. Most subagents lack
+# the Agent tool and can't act on the "spawn claude-code-guide subagent" advice.
+out=$(printf '%s' "$(jq -nc '{session_id:"agent-deadbeef",tool_input:{file_path:"/home/bate/.claude/settings.json"}}')" \
+       | bash ~/.claude/hooks/hint-agent-claude-code-guide.sh)
+[ -z "$out" ] \
+  && echo "OK:   hint-agent-claude-code-guide silent in subagent (agent-* sid)" \
+  || { echo "FAIL: hint-agent-claude-code-guide should skip subagent: $out"; fail=1; }
+
+# Compact-reset: PostCompact bump re-arms the one-shot post-compact.
+hccg_sid_cmp="hccg-cmp-$$"
+rm -rf /tmp/claude-hint-agent-claude-code-guide /tmp/claude-compact-events
+out=$(printf '%s' "$(jq -nc --arg s "$hccg_sid_cmp" '{session_id:$s,tool_input:{file_path:"/home/bate/.claude/settings.json"}}')" \
+       | bash ~/.claude/hooks/hint-agent-claude-code-guide.sh)
+echo "$out" | jq -e '.hookSpecificOutput.additionalContext | contains("claude-code-guide")' > "$test_out" \
+  && echo "OK:   hint-agent-claude-code-guide first fire (compact-rearm setup)" \
+  || { echo "FAIL: hint-agent-claude-code-guide first fire for compact test: $out"; fail=1; }
+out=$(printf '%s' "$(jq -nc --arg s "$hccg_sid_cmp" '{session_id:$s,tool_input:{file_path:"/home/bate/.claude/hooks/foo.sh"}}')" \
+       | bash ~/.claude/hooks/hint-agent-claude-code-guide.sh)
+[ -z "$out" ] && echo "OK:   hint-agent-claude-code-guide silent before compact" \
+  || { echo "FAIL: hint-agent-claude-code-guide pre-compact silent: $out"; fail=1; }
+printf '{"session_id":"%s"}' "$hccg_sid_cmp" | bash ~/.claude/hooks/compact-bump.sh
+out=$(printf '%s' "$(jq -nc --arg s "$hccg_sid_cmp" '{session_id:$s,tool_input:{file_path:"/home/bate/.claude/skills/bar.md"}}')" \
+       | bash ~/.claude/hooks/hint-agent-claude-code-guide.sh)
+echo "$out" | jq -e '.hookSpecificOutput.additionalContext | contains("claude-code-guide")' > "$test_out" \
+  && echo "OK:   hint-agent-claude-code-guide re-fires after compact-bump" \
+  || { echo "FAIL: hint-agent-claude-code-guide should re-fire after compact: $out"; fail=1; }
+rm -rf /tmp/claude-hint-agent-claude-code-guide /tmp/claude-compact-events
+
 
 # hint-skill-jina-ai: nudge agent to load the jina-ai skill before calling
 # WebSearch. Once-per-session cache (signature: session_id).
@@ -1000,6 +1089,33 @@ echo "$out" | jq -e '.hookSpecificOutput.additionalContext | contains("/jina-ai"
 
 rm -f "$hsja_cache" "$hsja_cache2"
 
+# Subagent skip: agent-* session_id silences the hint.
+out=$(printf '%s' "$(jq -nc '{session_id:"agent-deadbeef",tool_name:"WebSearch",tool_input:{query:"foo"}}')" \
+       | bash ~/.claude/hooks/hint-skill-jina-ai.sh)
+[ -z "$out" ] \
+  && echo "OK:   hint-skill-jina-ai silent in subagent (agent-* sid)" \
+  || { echo "FAIL: hint-skill-jina-ai should skip subagent: $out"; fail=1; }
+
+# Compact-reset: PostCompact bump re-arms the one-shot post-compact.
+hsja_sid_cmp="hsja-cmp-$$"
+rm -rf /tmp/claude-skill-hint-jina-ai /tmp/claude-compact-events
+out=$(printf '%s' "$(jq -nc --arg s "$hsja_sid_cmp" '{session_id:$s,tool_name:"WebSearch",tool_input:{query:"foo"}}')" \
+       | bash ~/.claude/hooks/hint-skill-jina-ai.sh)
+echo "$out" | jq -e '.hookSpecificOutput.additionalContext | contains("/jina-ai")' > "$test_out" \
+  && echo "OK:   hint-skill-jina-ai first fire (compact-rearm setup)" \
+  || { echo "FAIL: hint-skill-jina-ai first fire for compact test: $out"; fail=1; }
+out=$(printf '%s' "$(jq -nc --arg s "$hsja_sid_cmp" '{session_id:$s,tool_name:"WebSearch",tool_input:{query:"bar"}}')" \
+       | bash ~/.claude/hooks/hint-skill-jina-ai.sh)
+[ -z "$out" ] && echo "OK:   hint-skill-jina-ai silent before compact" \
+  || { echo "FAIL: hint-skill-jina-ai pre-compact silent: $out"; fail=1; }
+printf '{"session_id":"%s"}' "$hsja_sid_cmp" | bash ~/.claude/hooks/compact-bump.sh
+out=$(printf '%s' "$(jq -nc --arg s "$hsja_sid_cmp" '{session_id:$s,tool_name:"WebSearch",tool_input:{query:"baz"}}')" \
+       | bash ~/.claude/hooks/hint-skill-jina-ai.sh)
+echo "$out" | jq -e '.hookSpecificOutput.additionalContext | contains("/jina-ai")' > "$test_out" \
+  && echo "OK:   hint-skill-jina-ai re-fires after compact-bump" \
+  || { echo "FAIL: hint-skill-jina-ai should re-fire after compact: $out"; fail=1; }
+rm -rf /tmp/claude-skill-hint-jina-ai /tmp/claude-compact-events
+
 
 # hint-skill-read-url: nudge agent to load the read-url skill before calling
 # WebFetch. Once-per-session cache (signature: session_id).
@@ -1032,6 +1148,112 @@ echo "$out" | jq -e '.hookSpecificOutput.additionalContext | contains("/read-url
   || { echo "FAIL: hint-skill-read-url new session: $out"; fail=1; }
 
 rm -f "$hsru_cache" "$hsru_cache2"
+
+# Subagent skip: agent-* session_id silences the hint.
+out=$(printf '%s' "$(jq -nc '{session_id:"agent-deadbeef",tool_name:"WebFetch",tool_input:{url:"https://example.com"}}')" \
+       | bash ~/.claude/hooks/hint-skill-read-url.sh)
+[ -z "$out" ] \
+  && echo "OK:   hint-skill-read-url silent in subagent (agent-* sid)" \
+  || { echo "FAIL: hint-skill-read-url should skip subagent: $out"; fail=1; }
+
+# Compact-reset: PostCompact bump re-arms the one-shot post-compact.
+hsru_sid_cmp="hsru-cmp-$$"
+rm -rf /tmp/claude-skill-hint-read-url /tmp/claude-compact-events
+out=$(printf '%s' "$(jq -nc --arg s "$hsru_sid_cmp" '{session_id:$s,tool_name:"WebFetch",tool_input:{url:"https://example.com"}}')" \
+       | bash ~/.claude/hooks/hint-skill-read-url.sh)
+echo "$out" | jq -e '.hookSpecificOutput.additionalContext | contains("/read-url")' > "$test_out" \
+  && echo "OK:   hint-skill-read-url first fire (compact-rearm setup)" \
+  || { echo "FAIL: hint-skill-read-url first fire for compact test: $out"; fail=1; }
+out=$(printf '%s' "$(jq -nc --arg s "$hsru_sid_cmp" '{session_id:$s,tool_name:"WebFetch",tool_input:{url:"https://example.org"}}')" \
+       | bash ~/.claude/hooks/hint-skill-read-url.sh)
+[ -z "$out" ] && echo "OK:   hint-skill-read-url silent before compact" \
+  || { echo "FAIL: hint-skill-read-url pre-compact silent: $out"; fail=1; }
+printf '{"session_id":"%s"}' "$hsru_sid_cmp" | bash ~/.claude/hooks/compact-bump.sh
+out=$(printf '%s' "$(jq -nc --arg s "$hsru_sid_cmp" '{session_id:$s,tool_name:"WebFetch",tool_input:{url:"https://example.net"}}')" \
+       | bash ~/.claude/hooks/hint-skill-read-url.sh)
+echo "$out" | jq -e '.hookSpecificOutput.additionalContext | contains("/read-url")' > "$test_out" \
+  && echo "OK:   hint-skill-read-url re-fires after compact-bump" \
+  || { echo "FAIL: hint-skill-read-url should re-fire after compact: $out"; fail=1; }
+rm -rf /tmp/claude-skill-hint-read-url /tmp/claude-compact-events
+
+# === prefer-limited-read ===
+plr_big_lines=$(mktemp /tmp/plr-big-lines-XXXXXX)
+plr_big_bytes=$(mktemp /tmp/plr-big-bytes-XXXXXX)
+plr_small=$(mktemp /tmp/plr-small-XXXXXX)
+# 400 lines × ~3 bytes/line ≈ 1.6 KB — triggers by line count, NOT by bytes.
+seq 1 400 > "$plr_big_lines"
+# 50 lines × 401 bytes ≈ 20 KB — triggers by bytes, NOT by line count.
+awk 'BEGIN{for(i=0;i<50;i++){for(j=0;j<400;j++)printf"x";print""}}' > "$plr_big_bytes"
+# 50 lines × ~3 bytes — under both thresholds, allowed.
+seq 1 50 > "$plr_small"
+
+assert_deny   prefer-limited-read "$(jq -n --arg fp "$plr_big_lines" '{tool_input:{file_path:$fp}}')" "400 lines"
+assert_deny   prefer-limited-read "$(jq -n --arg fp "$plr_big_bytes" '{tool_input:{file_path:$fp}}')" "KB"
+assert_silent prefer-limited-read "$(jq -n --arg fp "$plr_big_lines" '{tool_input:{file_path:$fp,limit:100}}')"
+assert_silent prefer-limited-read "$(jq -n --arg fp "$plr_big_bytes" '{tool_input:{file_path:$fp,limit:100}}')"
+assert_silent prefer-limited-read "$(jq -n --arg fp "$plr_small" '{tool_input:{file_path:$fp}}')"
+assert_silent prefer-limited-read '{"tool_input":{"file_path":"/tmp/does-not-exist-plr"}}'
+assert_silent prefer-limited-read '{"tool_input":{}}'
+
+rm -f "$plr_big_lines" "$plr_big_bytes" "$plr_small"
+
+# === hint-fork-on-bloat ===
+# 60 KB string payload — single call crosses the 50 KB threshold.
+hfb_big_payload=$(awk 'BEGIN{for(i=0;i<60;i++){for(j=0;j<1024;j++)printf"x";print""}}')
+# 1 KB payload — well below threshold, two calls still silent.
+hfb_small_payload=$(awk 'BEGIN{for(j=0;j<1024;j++)printf"x"}')
+
+# Clean any stale state from prior runs.
+rm -rf /tmp/claude-hint-fork-bloat
+
+assert_silent hint-fork-on-bloat "$(jq -n --arg p "$hfb_small_payload" '{session_id:"hfb_small_sess",tool_response:$p}')"
+assert_silent hint-fork-on-bloat "$(jq -n --arg p "$hfb_small_payload" '{session_id:"hfb_small_sess",tool_response:$p}')"
+assert_context hint-fork-on-bloat "$(jq -n --arg p "$hfb_big_payload" '{session_id:"hfb_big_sess",tool_response:$p}')" "Fork-first on Surveys"
+# Already fired in hfb_big_sess: subsequent calls silent (one-shot).
+assert_silent hint-fork-on-bloat "$(jq -n --arg p "$hfb_big_payload" '{session_id:"hfb_big_sess",tool_response:$p}')"
+# Missing session_id: silent.
+assert_silent hint-fork-on-bloat "$(jq -n --arg p "$hfb_big_payload" '{tool_response:$p}')"
+# Empty tool_response: silent.
+assert_silent hint-fork-on-bloat '{"session_id":"hfb_empty_sess","tool_response":""}'
+# Subagent session_id (agent-* prefix): silent even with big payload.
+assert_silent hint-fork-on-bloat "$(jq -n --arg p "$hfb_big_payload" '{session_id:"agent-deadbeef1234",tool_response:$p}')"
+
+# Compact-reset: after firing, a PostCompact bump should re-arm the hint so
+# the next bloat cycle fires again. Uses the shared compact-bump generation
+# file owned by compact-bump.sh (PostCompact).
+rm -rf /tmp/claude-hint-fork-bloat /tmp/claude-compact-events
+# First fire — gen starts at 0 (no PostCompact yet).
+assert_context hint-fork-on-bloat "$(jq -n --arg p "$hfb_big_payload" '{session_id:"hfb_compact_sess",tool_response:$p}')" "Fork-first on Surveys"
+# Same session, no compact yet — silent (one-shot still in effect).
+assert_silent hint-fork-on-bloat "$(jq -n --arg p "$hfb_big_payload" '{session_id:"hfb_compact_sess",tool_response:$p}')"
+# Simulate a compaction by invoking compact-bump.sh — gen 0 → 1.
+printf '{"session_id":"hfb_compact_sess"}' | bash ~/.claude/hooks/compact-bump.sh
+# Now the hint re-fires because current_gen (1) > prev_gen (0).
+assert_context hint-fork-on-bloat "$(jq -n --arg p "$hfb_big_payload" '{session_id:"hfb_compact_sess",tool_response:$p}')" "Fork-first on Surveys"
+# After re-fire, silent again on the next call.
+assert_silent hint-fork-on-bloat "$(jq -n --arg p "$hfb_big_payload" '{session_id:"hfb_compact_sess",tool_response:$p}')"
+
+rm -rf /tmp/claude-hint-fork-bloat /tmp/claude-compact-events
+
+# === compact-bump ===
+# PostCompact hook: increments per-session generation counter. Silent stdout;
+# state is the file. Verify increment, missing-session-id silent no-op.
+rm -rf /tmp/claude-compact-events
+assert_silent compact-bump '{"session_id":"cb_sess"}'
+[ "$(cat /tmp/claude-compact-events/cb_sess.gen 2>&1)" = "1" ] \
+  && echo "OK:   compact-bump gen 0 → 1" \
+  || { echo "FAIL: compact-bump first call should set gen=1"; fail=1; }
+assert_silent compact-bump '{"session_id":"cb_sess"}'
+[ "$(cat /tmp/claude-compact-events/cb_sess.gen 2>&1)" = "2" ] \
+  && echo "OK:   compact-bump gen 1 → 2" \
+  || { echo "FAIL: compact-bump second call should set gen=2"; fail=1; }
+# Missing session_id: silent and no file written.
+assert_silent compact-bump '{}'
+[ -z "$(ls /tmp/claude-compact-events/ 2>&1 | rg -v '^cb_sess')" ] \
+  && echo "OK:   compact-bump silent on missing session_id" \
+  || { echo "FAIL: compact-bump should not write file without session_id"; fail=1; }
+
+rm -rf /tmp/claude-compact-events
 
 echo ""
 rm -f "$test_out"
