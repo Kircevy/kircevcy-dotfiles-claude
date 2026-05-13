@@ -44,6 +44,18 @@ TOOLBIG_SENTINEL = "\0TOOBIG\0"
 CODEX_PROMPT_FILE = Path(__file__).parent / "audit-fresh-eye-codex.md"
 
 
+def should_skip_audit_path(abs_path: str, cwd: str) -> bool:
+    if abs_path.startswith("/tmp/"):
+        return True
+    if abs_path.startswith(str(AUDIT_DIR)):
+        return True
+    try:
+        rel = Path(abs_path).resolve().relative_to(Path(cwd).resolve())
+    except (OSError, ValueError):
+        return False
+    return bool(rel.parts) and rel.parts[0] == "temp"
+
+
 # ---------- storage ----------
 
 def session_file(sid: str) -> Path:
@@ -123,12 +135,7 @@ def cmd_hook() -> int:
     except OSError:
         abs_path = str(p)
 
-    # /tmp paths are typically one-off scripts (smoke tests, scratch files,
-    # downloaded artifacts) not worth long-term audit attention. The
-    # AUDIT_DIR exclusion below this is now subsumed but kept for clarity.
-    if abs_path.startswith("/tmp/"):
-        return 0
-    if abs_path.startswith(str(AUDIT_DIR)):
+    if should_skip_audit_path(abs_path, cwd):
         return 0
 
     sid = payload.get("session_id") or "unknown"
@@ -506,6 +513,8 @@ def _spawn_audit_claude(
         **os.environ,
         "CLAUDE_AUDIT_SUBAGENT": "1",
         "CLAUDE_CODE_SIMPLE_SYSTEM_PROMPT": "1",
+        "CLAUDE_AGENT_SDK_DISABLE_BUILTIN_AGENTS": "1",
+        "CLAUDE_CODE_DISABLE_POLICY_SKILLS": "1",
         "ENABLE_CLAUDEAI_MCP_SERVERS": "false",
         "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1",
     }

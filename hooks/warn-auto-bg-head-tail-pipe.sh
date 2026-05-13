@@ -1,8 +1,8 @@
 #!/usr/bin/bash
 # PostToolUse hook: warn when a foreground Bash got auto-backgrounded by
 # timeout AND ends with `| head` / `| tail`. The PreToolUse counterpart
-# (no-bg-head-tail-pipe.sh) catches the explicit run_in_background=true case;
-# this catches the implicit promotion the PreToolUse cannot see.
+# (no-bg-head-tail-pipe.sh) catches explicit run_in_background=true and
+# timeout >= BASH_MAX_TIMEOUT_MS; this catches other implicit promotions.
 set -euo pipefail
 
 input=$(cat)

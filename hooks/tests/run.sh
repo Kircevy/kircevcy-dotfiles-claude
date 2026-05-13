@@ -66,6 +66,19 @@ assert_silent_env() {
   fi
 }
 
+assert_deny_env() {
+  local name="$1" input="$2" pattern="$3" env_name="$4" env_value="$5"
+  local out
+  out=$(printf '%s' "$input" | env "$env_name=$env_value" bash ~/.claude/hooks/$name.sh 2>&1)
+  if [ -z "$out" ] || ! echo "$out" | jq -e ".hookSpecificOutput.permissionDecision == \"deny\" and (.hookSpecificOutput.permissionDecisionReason | contains(\"$pattern\"))" > "$test_out"; then
+    echo "FAIL: $name should deny with pattern '$pattern' with $env_name=$env_value"
+    echo "  got: $out"
+    fail=1
+  else
+    echo "OK:   $name deny ($pattern, $env_name=$env_value)"
+  fi
+}
+
 assert_context_env() {
   local name="$1" input="$2" pattern="$3" env_name="$4" env_value="$5"
   local out
@@ -502,15 +515,22 @@ echo "$out" | jq -e '.hookSpecificOutput.additionalContext | contains("truncates
   || { echo "FAIL: no-head-tail-pipe should re-fire after compact: $out"; fail=1; }
 rm -rf "$nht_cache_dir" /tmp/claude-compact-events
 
-# no-bg-head-tail-pipe: hard-deny when run_in_background=true with trailing
-# `| head` / `| tail`. Foreground commands (handled by no-head-tail-pipe) and
-# intermediate `| head | wc` are pass-through.
+# no-bg-head-tail-pipe: hard-deny when run_in_background=true or timeout >=
+# BASH_MAX_TIMEOUT_MS with trailing `| head` / `| tail`. Foreground commands
+# under the timeout cap (handled by no-head-tail-pipe) and intermediate
+# `| head | wc` are pass-through.
 assert_deny no-bg-head-tail-pipe \
   '{"tool_input":{"command":"rg foo | head -n 20","run_in_background":true}}' \
-  "Background Bash"
+  "Background-risky Bash"
 assert_deny no-bg-head-tail-pipe \
   '{"tool_input":{"command":"./server | tail -f","run_in_background":true}}' \
-  "Background Bash"
+  "Background-risky Bash"
+assert_deny_env no-bg-head-tail-pipe \
+  '{"tool_input":{"command":"uv run python temp/maker_eda/run_eda.py 2>&1 | tail -50","timeout":600000}}' \
+  "Background-risky Bash" BASH_MAX_TIMEOUT_MS 600000
+assert_silent_env no-bg-head-tail-pipe \
+  '{"tool_input":{"command":"uv run python temp/maker_eda/run_eda.py 2>&1 | tail -50","timeout":599999}}' \
+  BASH_MAX_TIMEOUT_MS 600000
 assert_silent no-bg-head-tail-pipe \
   '{"tool_input":{"command":"rg foo | head -n 20","run_in_background":false}}'
 assert_silent no-bg-head-tail-pipe \
