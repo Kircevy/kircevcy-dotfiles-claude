@@ -1,6 +1,6 @@
 ---
 name: chrome-cdp
-description: Connect to user's local Chrome session via Chrome DevTools Protocol. Inspect and interact with web pages shared with user cookies and login states. Use for headful browser automation. Request explicit user approval before use.
+description: Connect to user's local Chrome session. Inspect and interact with web pages in a headful browser shared with user cookies and login states — navigate pages, click buttons, take screenshots, test web apps in headful Chrome the user could see in real-time. Use for headful browser automation. This skill should be used when user says "use my browser", "open this page", "in my Chrome", "fill the form", "test in real browser", "show in browser", "my login account". Request explicit user approval before use.
 ---
 
 # Chrome CDP
