@@ -150,7 +150,7 @@ writing status matchers, treat terminal states as `Success|Failed|Killed`.
 `pueue clean` (or automatic cleanup) permanently removes logs of completed tasks. If you need to verify results later, check output files or save logs before cleaning.
 
 ## Skill Files
-
+!`${CLAUDE_SKILL_DIR}/scripts/ensure_daemon.sh >/dev/null 2>&1 || true`
 - `scripts/run_in_pueue.sh` — wraps pueue add with auto daemon start, per-project grouping, and follow
 - `scripts/list_pueue_tasks.sh` — list existing pueue tasks and their status
 - `references/pueue.md` — comprehensive pueue CLI usage documentation
