@@ -9,8 +9,8 @@
 # State: /tmp/claude-recall-reminder/<session_id> — single integer
 # counter, reset to 0 after each fire. The companion hook
 # recall-reminder-reset.sh (PostToolUse on Read|Skill) also zeros the
-# counter when the agent Reads a pitfalls/memory page or invokes the
-# pitfall-add / memory-add skill — mirroring how TodoWrite resets the
+# counter when the agent Reads a memory page (including pitfalls.md) or
+# invokes the memory-add skill — mirroring how TodoWrite resets the
 # built-in reminder on actual tool use.
 #
 # Env override: RECALL_REMINDER_INTERVAL (default 9).
@@ -41,7 +41,7 @@ if [ "$COUNT" -ge "$RECALL_INTERVAL" ]; then
 {
   "hookSpecificOutput": {
     "hookEventName": "UserPromptSubmit",
-    "additionalContext": "Recall reminder: piftalls recall and long-term memory hasn't been used recently. You can recall ~/.claude/pitfalls/pages/index.md for common pitfalls; recall ~/.claude/memory/pages/index.md for relevant facts and lessons. If a pitfall trigger matches your planned action, PAUSE and follow the mitigation. Memorize mistakes or incidents via /pitfall-add; memorize durable facts or lessons via /memory-add. Ignore this reminder otherwise."
+    "additionalContext": "Recall reminder: the long-term memory system hasn't been used recently. You can recall ~/.claude/memory/pitfalls.md for common pitfalls; recall ~/.claude/memory/pages/index.md for relevant facts and lessons. If a pitfall trigger matches your planned action, PAUSE and follow the mitigation. Memorize mistakes, incidents, durable facts or lessons via /memory-add. Ignore this reminder otherwise."
   }
 }
 EOF

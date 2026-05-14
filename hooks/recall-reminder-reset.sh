@@ -1,11 +1,11 @@
 #!/usr/bin/bash
 # Reset the recall-reminder counter when the agent demonstrably touched
-# the pitfalls or memory pages — mirrors how Claude Code's built-in
-# TodoWrite reminder resets on a TodoWrite tool call.
+# the memory pages or pitfalls projection — mirrors how Claude Code's
+# built-in TodoWrite reminder resets on a TodoWrite tool call.
 #
 # Triggers reset on:
-#   - Read of any file under pitfalls/pages/*.md or memory/pages/*.md
-#   - Skill invocation of pitfall-add or memory-add
+#   - Read of any file under memory/pages/*.md or memory/pitfalls.md
+#   - Skill invocation of memory-add
 #
 # Silent: no stdout, no permissionDecision, just touches the state file.
 set -euo pipefail
@@ -26,13 +26,13 @@ case "$TOOL" in
   Read)
     FP=$(printf '%s' "$PAYLOAD" | jq -r '.tool_input.file_path // ""' 2>/dev/null) || FP=""
     case "$FP" in
-      */pitfalls/pages/*.md|*/memory/pages/*.md) RESET=1 ;;
+      */memory/pages/*.md|*/memory/pitfalls.md) RESET=1 ;;
     esac
     ;;
   Skill)
     SK=$(printf '%s' "$PAYLOAD" | jq -r '.tool_input.skill // ""' 2>/dev/null) || SK=""
     case "$SK" in
-      pitfall-add|memory-add) RESET=1 ;;
+      memory-add) RESET=1 ;;
     esac
     ;;
 esac

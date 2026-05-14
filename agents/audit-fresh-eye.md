@@ -1,6 +1,6 @@
 ---
 name: audit-fresh-eye
-description: Internal-use
+description: Audit with a fresh eye.
 model: sonnet
 color: yellow
 permissionMode: dontAsk

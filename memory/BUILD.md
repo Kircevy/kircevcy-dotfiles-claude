@@ -17,7 +17,7 @@ Pipeline (parallelize via subagents where volume warrants):
 
 1. DISTILL → ~/.claude/memory/distilled/<slug>.md per project (one .md per cwd). Read each session's JSONL, order events by timestamp, keep only user (string content) and assistant (text blocks) where isSidechain=false. Drop <system-reminder>, <command-*>, <task-notification>, "Cache keep-alive..." ticks, "<<autonomous-loop...>>" sentinels, user messages starting with "Stop hook feedback:", and assistant text starting with "API Error".
 
-2. EXTRACT per .md → bullet nuggets. Each: STANDING-RULE claim + line citation + tag in {user-convention, user-correction, costly-error, trial-and-error, pitfalls, friction-point, user-anger, repeating-workflow, env-facts, remember} → ~/.claude/memory/distilled/extracted/<num>-<slug>.md
+2. EXTRACT per .md → bullet nuggets. Each: STANDING-RULE claim + line citation + tag in {user-convention, user-correction, costly-error, trial-and-error, foot-gun, friction-point, user-anger, repeating-workflow, env-facts, remember} → ~/.claude/memory/distilled/extracted/<num>-<slug>.md
 
 3. CLUSTER across projects → one merged file. H2 themes (8–14); merge near-duplicates; carry `(×N sources)` cross-project recurrence count → ~/.claude/memory/distilled/extracted/_merged.md
 
@@ -126,6 +126,34 @@ Run pages.py. Explodes promoted.md into one page per H2 topic under ~/.claude/me
 First-time setup: add `@memory/pages/index.md` to ~/.claude/CLAUDE.md (path is relative to CLAUDE.md's directory).
 
 After each distill action, append distill-history.md with local timestamp [YYYY-MM-DD]T[HH:MM]+08:00.
+
+After index build, heads to PITFALLS PROJECTION.
+
+### PITFALL TRIGGERS
+
+`~/.claude/memory/pitfalls.md` is a flat catalog of `TRIGGER → mitigation` one-liners for fast pre-action recall, loaded into every session via @-include in CLAUDE.md.
+
+Agent hand-edits — no script regenerates. After each promoted.md update, run the self-audit below and edit `pitfalls.md` directly.
+
+Trigger must be matchable pre-action (verb-object or "about to X"). Mitigation must be actionable in one sentence.
+
+First-time initialize with:
+
+```markdown
+# Pitfall Triggers
+
+When about to do anything matching a trigger below, PAUSE. Read mitigation.
+
+**CRITICAL:** If a pitfall trigger matches your planned action, PAUSE and follow the mitigation.
+
+Format: `- TRIGGER → mitigation.`
+```
+
+Self-audit (heuristic, not tag-gated): walk promoted.md and judge each bullet — if it warrants a pre-action trigger entry in the routing table (typical signals: mistake-correction pattern, recurring AI default that backfires, irreversible foot-gun), check whether `pitfalls.md` already carries a matching trigger; insert if missing, reword if drifted. Tags like `foot-gun` / `costly-error` / `user-correction` are hints, not gates — promote based on whether a future Claude would benefit from PAUSE-before-action recall.
+
+Cap at ~50 entries. Beyond that, demote stale or rarely-fired triggers — move details to memory pages, shorten the projection line, or drop entirely.
+
+Quarterly review: audit `pitfalls.md` for entries whose source claim in promoted.md has changed, been removed, or no longer applies. Re-sync rather than letting the projection drift.
 
 ## SCRIPTS TO USE
 

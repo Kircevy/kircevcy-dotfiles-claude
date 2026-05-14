@@ -62,26 +62,4 @@ Loudly "DoA medium." on switch.
 
 ## Long-term Memory
 
-Read relevant pages before responding to tasks:
-
-@memory/pages/index.md
-
-Memories are historical snapshots. When contradicts new findings, flag before updating.
-
-> To maintain or update memory, see memory/BUILD.md
-
-When user ask you to "remember" facts or lessons, use /memory-add skill. No edit memory pages directly.
-
----
-
-## Pitfalls Recall
-
-ALWAYS read matching pitfall entries before making mistake actions.
-
-@pitfalls/pages/index.md
-
-If a pitfall trigger matches your planned action, PAUSE and follow the mitigation.
-
-> To maintain pitfalls, see pitfalls/BUILD.md
-
-When user corrects a mistake or incident, use /pitfall-add skill. No edit pitfall pages directly.
+@memory/CLAUDE.md
