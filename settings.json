@@ -345,6 +345,16 @@
         ]
       },
       {
+        "matcher": "Read|Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/recall-reminder-reset.sh",
+            "timeout": 5
+          }
+        ]
+      },
+      {
         "matcher": "Write",
         "hooks": [
           {
@@ -403,6 +413,11 @@
           {
             "type": "command",
             "command": "bash ~/.claude/hooks/inject-system-load.sh",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/recall-reminder.sh",
             "timeout": 5
           }
         ]

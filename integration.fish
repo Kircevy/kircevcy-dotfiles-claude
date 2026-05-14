@@ -32,7 +32,6 @@ function commit
     if set -q argv[1]
         set extra " Additional user note to help you understand: $argv"
     end
-    set -lx CLAUDE_CODE_SIMPLE_SYSTEM_PROMPT 1
     set -lx CLAUDE_CODE_DISABLE_POLICY_SKILLS 1
     set -lx CLAUDE_CODE_DISABLE_AUTO_MEMORY 1
     set -lx ENABLE_CLAUDEAI_MCP_SERVERS false

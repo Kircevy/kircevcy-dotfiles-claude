@@ -70,4 +70,18 @@ Memories are historical snapshots. When contradicts new findings, flag before up
 
 > To maintain or update memory, see memory/BUILD.md
 
-To memorize durable facts or lessons, use /memory-add skill.
+When user ask you to "remember" facts or lessons, use /memory-add skill. No edit memory pages directly.
+
+---
+
+## Pitfalls Recall
+
+ALWAYS read matching pitfall entries before making mistake actions.
+
+@pitfalls/pages/index.md
+
+If a pitfall trigger matches your planned action, PAUSE and follow the mitigation.
+
+> To maintain pitfalls, see pitfalls/BUILD.md
+
+When user corrects a mistake or incident, use /pitfall-add skill. No edit pitfall pages directly.

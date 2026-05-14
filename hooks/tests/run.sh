@@ -868,6 +868,92 @@ echo "$out" | jq -e '.hookSpecificOutput.additionalContext | contains("DISK")' >
 
 rm -f "$sysl_cache"
 
+# recall-reminder: silent for first (interval-1) turns, fires on the
+# interval-th turn, then resets and stays silent again. Counter is per
+# session_id under /tmp/claude-recall-reminder/.
+rr_sid="rr-$$"
+rr_cache="/tmp/claude-recall-reminder/$rr_sid"
+rm -f "$rr_cache"
+rr_in=$(jq -nc --arg s "$rr_sid" '{session_id:$s}')
+
+# Interval forced to 3 so the test stays small.
+out=$(RECALL_REMINDER_INTERVAL=3 bash ~/.claude/hooks/recall-reminder.sh <<< "$rr_in")
+[ -z "$out" ] \
+  && echo "OK:   recall-reminder silent on turn 1 (interval=3)" \
+  || { echo "FAIL: recall-reminder should be silent on turn 1: $out"; fail=1; }
+
+out=$(RECALL_REMINDER_INTERVAL=3 bash ~/.claude/hooks/recall-reminder.sh <<< "$rr_in")
+[ -z "$out" ] \
+  && echo "OK:   recall-reminder silent on turn 2 (interval=3)" \
+  || { echo "FAIL: recall-reminder should be silent on turn 2: $out"; fail=1; }
+
+out=$(RECALL_REMINDER_INTERVAL=3 bash ~/.claude/hooks/recall-reminder.sh <<< "$rr_in")
+echo "$out" | jq -e '.hookSpecificOutput.additionalContext | contains("pitfalls/pages/index.md")' > "$test_out" \
+  && echo "OK:   recall-reminder fires on turn 3 (interval=3)" \
+  || { echo "FAIL: recall-reminder should fire on turn 3: $out"; fail=1; }
+
+# After fire, counter should be reset → next turn silent again.
+out=$(RECALL_REMINDER_INTERVAL=3 bash ~/.claude/hooks/recall-reminder.sh <<< "$rr_in")
+[ -z "$out" ] \
+  && echo "OK:   recall-reminder silent on turn after reset" \
+  || { echo "FAIL: recall-reminder should be silent after reset: $out"; fail=1; }
+
+rm -f "$rr_cache"
+
+# recall-reminder-reset: zeros the counter when Read touches a
+# pitfalls/memory page, or when Skill invokes pitfall-add / memory-add.
+rrr_sid="rrr-$$"
+rrr_cache="/tmp/claude-recall-reminder/$rrr_sid"
+mkdir -p /tmp/claude-recall-reminder
+
+# Pre-seed counter at 7 so we can observe reset to 0.
+echo 7 > "$rrr_cache"
+rrr_in=$(jq -nc --arg s "$rrr_sid" '{session_id:$s,tool_name:"Read",tool_input:{file_path:"/home/ubuntu/.claude/pitfalls/pages/index.md"}}')
+bash ~/.claude/hooks/recall-reminder-reset.sh <<< "$rrr_in"
+[ "$(cat "$rrr_cache")" = "0" ] \
+  && echo "OK:   recall-reminder-reset zeros on Read of pitfalls page" \
+  || { echo "FAIL: recall-reminder-reset Read pitfalls page: $(cat "$rrr_cache")"; fail=1; }
+
+echo 7 > "$rrr_cache"
+rrr_in=$(jq -nc --arg s "$rrr_sid" '{session_id:$s,tool_name:"Read",tool_input:{file_path:"/home/ubuntu/.claude/memory/pages/git-and-commits.md"}}')
+bash ~/.claude/hooks/recall-reminder-reset.sh <<< "$rrr_in"
+[ "$(cat "$rrr_cache")" = "0" ] \
+  && echo "OK:   recall-reminder-reset zeros on Read of memory page" \
+  || { echo "FAIL: recall-reminder-reset Read memory page: $(cat "$rrr_cache")"; fail=1; }
+
+# Read of unrelated file → counter untouched.
+echo 7 > "$rrr_cache"
+rrr_in=$(jq -nc --arg s "$rrr_sid" '{session_id:$s,tool_name:"Read",tool_input:{file_path:"/tmp/other.md"}}')
+bash ~/.claude/hooks/recall-reminder-reset.sh <<< "$rrr_in"
+[ "$(cat "$rrr_cache")" = "7" ] \
+  && echo "OK:   recall-reminder-reset leaves counter on Read of unrelated file" \
+  || { echo "FAIL: recall-reminder-reset Read unrelated: $(cat "$rrr_cache")"; fail=1; }
+
+# Skill invocation of pitfall-add / memory-add → reset.
+echo 7 > "$rrr_cache"
+rrr_in=$(jq -nc --arg s "$rrr_sid" '{session_id:$s,tool_name:"Skill",tool_input:{skill:"pitfall-add"}}')
+bash ~/.claude/hooks/recall-reminder-reset.sh <<< "$rrr_in"
+[ "$(cat "$rrr_cache")" = "0" ] \
+  && echo "OK:   recall-reminder-reset zeros on Skill=pitfall-add" \
+  || { echo "FAIL: recall-reminder-reset Skill pitfall-add: $(cat "$rrr_cache")"; fail=1; }
+
+echo 7 > "$rrr_cache"
+rrr_in=$(jq -nc --arg s "$rrr_sid" '{session_id:$s,tool_name:"Skill",tool_input:{skill:"memory-add"}}')
+bash ~/.claude/hooks/recall-reminder-reset.sh <<< "$rrr_in"
+[ "$(cat "$rrr_cache")" = "0" ] \
+  && echo "OK:   recall-reminder-reset zeros on Skill=memory-add" \
+  || { echo "FAIL: recall-reminder-reset Skill memory-add: $(cat "$rrr_cache")"; fail=1; }
+
+# Skill invocation of unrelated skill → counter untouched.
+echo 7 > "$rrr_cache"
+rrr_in=$(jq -nc --arg s "$rrr_sid" '{session_id:$s,tool_name:"Skill",tool_input:{skill:"read-url"}}')
+bash ~/.claude/hooks/recall-reminder-reset.sh <<< "$rrr_in"
+[ "$(cat "$rrr_cache")" = "7" ] \
+  && echo "OK:   recall-reminder-reset leaves counter on Skill=read-url" \
+  || { echo "FAIL: recall-reminder-reset Skill unrelated: $(cat "$rrr_cache")"; fail=1; }
+
+rm -f "$rrr_cache"
+
 echo ""
 echo "=== Skill-recall hint hooks ==="
 

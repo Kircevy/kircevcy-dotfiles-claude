@@ -15,4 +15,4 @@ fi
 
 mkdir -p ~/.claude/memory
 printf -- '- %s\n' "$ARG" >> ~/.claude/memory/staging.md
-echo "Staged to memory/staging.md for next weekly distill."
+echo "Staged to ~/.claude/memory/staging.md for next weekly distill."
