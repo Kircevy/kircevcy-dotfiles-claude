@@ -4,11 +4,11 @@
 
 CLI tools:
 
-- `rg` not `grep` · `fd` not `find` · `exa` not `ls` · `sd` not `sed`
+- `rg` not `grep` · `fd` not `find` · `exa` not `ls` · `sd` not `sed`; fallback to legacy tools when unavailable
 - `just` not `make` · `uv` not `pip` · `uv run` not `python3` · `pnpm` not `npm`
-- `sqlite3` · `gitleaks` · `hyperfine` · `rsync` · `gh`
+- `ast-grep` (`sg`) · `duckdb` · `mlr` · `jc` · `gron` · `sqlite3` · `gitleaks` · `hyperfine` · `rsync` · `gh` · `pdftotext`
 
-Python: `uv`, `ruff`, `basedpyright`, run with `PYTHONUNBUFFERED=1` or `uv run -u`.
+Python: 4-space indentation, `uv`, `ruff`, `basedpyright`, run with `PYTHONUNBUFFERED=1` or `uv run -u`.
 
 ---
 
@@ -17,13 +17,15 @@ Python: `uv`, `ruff`, `basedpyright`, run with `PYTHONUNBUFFERED=1` or `uv run -
 - **Skills are mandatory** — Load ALL matching skills via `Skill` tool before starting ANY task, even if topic seems familiar. Skills define guardrails and workflows — not just reference docs. Never skip because "I already know it."
 - **Skills recall rate** — Bias to load more skills on doubt. Unused skill costs seconds; missed skill violates guardrails and costs user.
 - **Bash output is internal** — Goes to the agent, never the user. Don't truncate (`| head`, `| tail`, `2>/dev/null`); the harness already saves large output and previews the head.
-- **Tables auto-render** — Skip alignment padding; escape literal `|` in cells.
+
+
 - **Prior responses collapse** — User sees only the last final response. Each response must be self-contained.
 
 ---
 
 ## Coding Discipline
 
+- **Blend edits naturally** — Modification requests should preserve surrounding tone and style.
 - **Smoke test first** — Smoke test on a slice before launching full pipeline.
 - **Cheap-first** — Among similar-confidence options, run the cheapest (or lowest-risk) first.
 - **Investigate before concluding** — Don't pre-name a root cause and "verify"; investigate first, name what you found.
@@ -46,7 +48,7 @@ The only exception is open-ended discussion: 2-3 sentences, recommendation + mai
 
 NEVER invent abbreviations or codenames for concepts (e.g. sm, L_off, v2, phase 3, W00). ALWAYS name in natural-language nouns (e.g. safe margin, level offset, polars version, migration phase) unless explicitly invented by user. Say the noun as-is in user voice, not abbreviated.
 
-**CRITICAL:** Plumbing identifiers (pueue IDs, git SHAs, MLflow run IDs, file:line refs, raw Bash counts) are invisible to the user. You have a bias to echo them verbatim from tool results; fight it. Before surfacing any ID or number: does user need it? No → drop. Yes → translate to meaningful outcome. Unavoidable → parenthesize: `committed "chore: XXX" (28e02bc)` not `committed 28e02bc`. E.g. pueue task → task name; SHA → commit message; file:line → code snippet; `pushed 2 commits` → `pushed to user/repo`.
+**CRITICAL:** Plumbing identifiers (pueue IDs, git SHAs, file:line refs, raw counts) are invisible to user. Fight bias to echo them. Translate to meaningful outcome. Compact fact labels `[V]` `[I]` `[?]` `[R]` `[!]` allowed inline.
 
 When reporting verdict or progress: only signal directly bound to user goal. Internal details → silently drop unless asked.
 
@@ -83,3 +85,11 @@ Short form (routine report):
 ## Long-term Memory
 
 @memory/CLAUDE.md
+
+---
+
+## Fact Marking
+
+Key conclusions get compact tags: `[V]` verified (log/code/doc evidence), `[I]` inference, `[?]` needs verification, `[R]` recommendation, `[!]` risk. Don't tag every sentence. `[I]` when words like "probably"/"likely" appear.
+
+
