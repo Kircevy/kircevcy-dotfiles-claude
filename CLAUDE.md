@@ -20,21 +20,42 @@ Python: 4-space indentation, `uv`, `ruff`, `basedpyright`, run with `PYTHONUNBUF
 
 
 - **Prior responses collapse** — User sees only the last final response. Each response must be self-contained.
+- **Prefer Edit/Write over sed/cat** — Edit and Write tools diff-tracked by harness, error on overwrite, refuse stale target. Bash sed/cat>> is irreversible. Only fallback when Edit legitimately won't work: `ssh [remote]`, `sudo tee`, `jq`/`python3` on complex json.
 
 ---
 
 ## Coding Discipline
 
-- **Blend edits naturally** — Modification requests should preserve surrounding tone and style.
-- **Smoke test first** — Smoke test on a slice before launching full pipeline.
-- **Cheap-first** — Among similar-confidence options, run the cheapest (or lowest-risk) first.
-- **Investigate before concluding** — Don't pre-name a root cause and "verify"; investigate first, name what you found.
-- **Probe loop** — Stuck → add instrumentation, gather data, not speculation. After 3-5 non-converging probes, surface findings and stop grinding.
-- **Don't minimize changes** — Solve problems systematically. Do not restrict to minimal diff. Do not band-aid.
-- **Fork on surveys** — When investigation would produce 3+ tool calls whose intermediate output won't be re-referenced, fork subagent; let only the verdict return.
-- **Freelance + report** — You are free to edit git-tracked code liberally. Report scope expansions at milestones (end of multi-turn task, before commit, before PR), not every reply.
+### Principles
+
+- **Think before code** — Grill yourself against every decision point. If decision may emerge mid-execution, investigate and lock it loudly before start editing.
+- **Simplicity first** — Minimum code that solves problem. Nothing speculative. No features/abstractions/configurability not asked. No error handling for impossible scenarios. If 200 lines could be 50, rewrite.
+- **Surgical changes** — Touch only what you must. Don't improve adjacent code. Don't refactor things not broken. Match existing style. Orphans from YOUR changes: remove. Every changed line traces to request.
+- **Clean up stale design** — Before extending existing code, design blank-slate and prefer replace over wrapper unless old shape wins on merits.
+- **Refactor brake** — Rewrite/refactor beyond task scope → state intent and blast radius loudly before editing. In yolo mode: commit refactor separately.
+- **Plan change is loud** — Execute plan precisely after decisions locked. If unexpected event forces mid-course change, report loudly.
+- **Goal-driven execution** — Define verifiable success criteria. Loop until verified. Multi-step tasks: state brief plan with verify checks.
+
+### Practices
+
+- **Read before decision** — Read relevant code/docs before answering; do EDA before assuming data scheme or pattern.
+- **Conclusion requires evidence** — NEVER pre-name "Root cause:" by memory or prejudice; investigate end-to-end, name what found with evidence and reasoning.
+- **Gather context first** — Don't assume. Explore/Glob/Grep/Read/WebSearch/AskUserQuestion before think.
+- **Prefer investigate over annoying human** — Query code/docs/system state first. Only ask user for intent/tacit knowledge.
+- **Probe loop** — Stuck → add instrumentation, not speculation. 3-5 non-converging probes → surface findings, stop.
+- **Fix root cause** — Solve systematically, not minimal band-aid. Don't add scope creep.
+- **No minimize changes on purpose** — Solve problems systematically. Never band-aid to introduce tech debt.
+- **Fork on surveys** — Investigation producing 3+ tool calls with unreferenced intermediate output → fork subagent.
+- **Codebase hygiene** — Skim edited files after goal complete. Clean up unnecessary comments, debug prints. Remove imports/variables/functions your changes made unused.
+- **No over-react to user feedback** — If user points out fault, PAUSE, enter "ro" mode. Never hinge files reactively. Clarify, offer solution, promise not to repeat. Continue only after "rw" approved.
+- **Information transparent** — When user does something wrong, point out. When user has over-complicated design and simpler approach exists, say so.
+- **Freelance + report** — Free to edit git-tracked code liberally. Report scope expansions at milestones, not every reply.
 
 ---
+
+## 语言
+
+所有回答默认使用中文。代码注释/变量名/commit信息保持英文不变。
 
 ## Output Style
 

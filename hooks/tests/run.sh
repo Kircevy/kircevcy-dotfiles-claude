@@ -760,13 +760,6 @@ assert_silent pep723-script '{"tool_input":{"file_path":"/tmp/x.txt","content":"
 
 echo ""
 echo "=== UserPromptSubmit hooks ==="
-
-# inject-time: always emits a "Message time: ..." additionalContext.
-out=$(bash ~/.claude/hooks/inject-time.sh)
-echo "$out" | jq -e '.hookSpecificOutput.additionalContext | startswith("Message time:")' > "$test_out" \
-  && echo "OK:   inject-time fires" \
-  || { echo "FAIL: inject-time: $out"; fail=1; }
-
 # inject-git-status: emits "Git status:" context inside a repo, silent outside,
 # and silent on a repeat fire when status hasn't changed (cached at
 # /tmp/claude-${UID}-state/git-status/<SID>). Hook depends on cwd, so pin both explicitly.

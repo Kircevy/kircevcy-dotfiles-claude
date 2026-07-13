@@ -2,7 +2,6 @@
   "cleanupPeriodDays": 3650,
   "skillListingBudgetFraction": 0.05,
   "env": {
-    "IS_DEMO": "1",
     "ENABLE_CLAUDEAI_MCP_SERVERS": "false",
     "CLAUDE_CODE_FORK_SUBAGENT": "1",
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
@@ -17,11 +16,15 @@
     "CLAUDE_CODE_NEW_INIT": "1",
     "CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY": "1",
     "AUDIT_BACKEND": "codex",
-    "AUDIT_CODEX_MODEL": "gpt-5.4",
+    "AUDIT_CODEX_MODEL": "gpt-5.6-luna",
     "AUDIT_CODEX_EFFORT": "medium",
     "AUDIT_CLAUDE_MODEL": "haiku",
     "AUDIT_CLAUDE_EFFORT": "high",
-    "CAVEMAN_DEFAULT_MODE": "ultra"
+    "ADVISOR_CODEX": "1",
+    "ADVISOR_CODEX_MODEL": "gpt-5.6-sol",
+    "ADVISOR_CODEX_EFFORT": "high",
+    "CAVEMAN_DEFAULT_MODE": "ultra",
+    "FIRECRAWL_API_KEY": "fc-2cfd5bd3f4d2413e8500f48b55192194"
   },
   "permissions": {
     "defaultMode": "bypassPermissions",
@@ -29,6 +32,7 @@
       "/tmp"
     ]
   },
+  "model": "haiku",
   "enableAllProjectMcpServers": true,
   "skillOverrides": {
     "cache-hygiene": "name-only",
@@ -422,11 +426,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/.claude/hooks/inject-time.sh",
-            "timeout": 5
-          },
-          {
-            "type": "command",
             "command": "bash ~/.claude/hooks/inject-git-status.sh",
             "timeout": 5
           },
@@ -454,6 +453,17 @@
           }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "wsl-screenshot-cli start --daemon --quiet",
+            "timeout": 5000
+          }
+        ]
+      }
     ]
   },
   "worktree": {
@@ -477,7 +487,8 @@
     "typescript-lsp@claude-plugins-official": false,
     "lua-lsp@claude-plugins-official": false,
     "caveman@caveman": true,
-    "superpowers@claude-plugins-official": false
+    "superpowers@claude-plugins-official": false,
+    "claude-mem@thedotmack": true
   },
   "extraKnownMarketplaces": {
     "claude-hud": {
@@ -528,5 +539,13 @@
   "remoteControlAtStartup": true,
   "inputNeededNotifEnabled": true,
   "agentPushNotifEnabled": true,
-  "voiceEnabled": true
+  "voiceEnabled": true,
+  "mcpServers": {
+    "internal-docs": {
+      "command": "node",
+      "args": [
+        "/home/wgz/pw-cdp/mcp-server.js"
+      ]
+    }
+  }
 }
