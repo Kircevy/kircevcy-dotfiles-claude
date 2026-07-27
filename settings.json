@@ -32,7 +32,7 @@
       "/tmp"
     ]
   },
-  "model": "haiku",
+  "model": "opus",
   "enableAllProjectMcpServers": true,
   "skillOverrides": {
     "cache-hygiene": "name-only",

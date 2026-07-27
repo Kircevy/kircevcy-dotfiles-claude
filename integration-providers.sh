@@ -24,6 +24,10 @@ claude-with() {
         deepseek)
             token="$DEEPSEEK_API_KEY"
             ;;
+        deepseek-v4)
+            # token 硬编码在 json 里，不需要环境变量
+            token="embedded"
+            ;;
         openrouter)
             token="$OPENROUTER_API_KEY"
             ;;
@@ -36,6 +40,15 @@ claude-with() {
         gpt)
             # codex-to-claude proxy: ChatGPT OAuth backend, no real token needed.
             token="dummy"
+            ;;
+        longcat)
+            token="REDACTED"
+            ;;
+        agnes)
+            if [ -z "${AGNES_API_KEY:-}" ] && [ -f ~/.claude/proxy/.env ]; then
+                . ~/.claude/proxy/.env
+            fi
+            token="${AGNES_API_KEY:-}"
             ;;
         *)
             echo "claude-with: unknown provider '$provider'" >&2
@@ -53,6 +66,10 @@ deepseek() {
     claude-with deepseek "$@"
 }
 
+deepseek-v4() {
+    claude-with deepseek-v4 "$@"
+}
+
 openrouter() {
     claude-with openrouter "$@"
 }
@@ -67,4 +84,12 @@ qwen() {
 
 gpt() {
     claude-with gpt "$@"
+}
+
+agnes() {
+    claude-with agnes "$@"
+}
+
+longcat() {
+    claude-with longcat "$@"
 }

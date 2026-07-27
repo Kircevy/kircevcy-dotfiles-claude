@@ -1,15 +1,10 @@
 ---
 name: deslop
 description: >
-  Rewrite an AI-generated article to remove AI slop patterns — emoji infestation,
-  marketing hyperbole, forced numbered groupings, table fetish, sanitized honesty,
-  lost specificity, and boilerplate scaffolding. Restores a human voice.
-  Use when the user says "deslop", "rid the slop", "clean up this AI article",
-  "remove AI slop", "depollute", or "make this sound less AI".
-disable-model-invocation: true
+  Review an AI-generated article to detect AI slop patterns. Loads a AI slop pattern checklist. Rewrite to strip AI smell without changing meaning or losing information. Restores a human voice. Use before publishing any AI-written article to public under the name of human author.
 ---
 
-# Deslop — Strip AI Slop From an Article
+# Deslop — Strip AI Slop Smell From an Article
 
 Rewrite an AI-generated article into prose that a human author would actually publish: same information, restored voice, no decorative scaffolding.
 
@@ -28,7 +23,7 @@ This split is why the skill cannot collapse into a single voice instruction. Rem
 
 ## When to Use
 
-- User pastes or points to an article they suspect was AI-generated and wants it cleaned
+- User pastes or points to an AI-generated article and wants it cleaned
 - User wrote a draft with AI assistance and now wants a human-voice pass
 - User asks to "deslop", "remove AI slop", "make this sound human", "depollute"
 - Polishing AI-translated marketing copy, blog posts, video descriptions, READMEs
@@ -36,9 +31,8 @@ This split is why the skill cannot collapse into a single voice instruction. Rem
 ## When NOT to Use
 
 - Generating new content from scratch (use the appropriate writing skill)
-- Translating between languages (use `better-translate` for English→Chinese)
+- Translating between languages (do loseless English→Chinese translation first)
 - Polishing prose that is already in human voice — just edit directly
-- Code review or documentation review (use `review`)
 
 ## Workflow
 
@@ -113,7 +107,7 @@ These are the verbal mannerisms LLMs reach for when they want to sound punchy or
 - **"真正的 / 真正意义上的 X"** as a vague intensifier ("真正的工程化", "真正意义上的现代 C++"). Either define what makes it "真正", or drop the qualifier.
 - **Gratuitous Chinese-English code-mixing** — sprinkling English words into Chinese prose when a perfectly good Chinese term exists: "这是最 typical 的 handle 机制", "我们 deploy 一下这个 feature", "用 elegant 的方式 handle 这个 case". Slop signal — the writer is reaching for English to sound technical/cosmopolitan. Translate the English back to Chinese (`typical → 典型`, `feature → 功能`, `handle → 处理`). Keep English only for proper nouns, established jargon with no good Chinese equivalent (CUDA, RAII, lambda), code identifiers, or quoted CLI/API names.
 - **Colon-fueled grand restatement** — "X：Y 在 Z 时代的最佳体现 / X：一种全新的 Y 范式 / X：开启 Y 的新纪元". The colon is followed by a portentous reformulation that adds no information, just rhetorical weight. Either delete everything after the colon, or replace with a concrete fact. Heuristic: if the post-colon clause could be cut without losing any information the reader didn't already have, cut it.
-- **Decorative scare quotes** — `""` around a term that is neither an actual quotation, a coinage on first mention, nor genuine irony: `"故障美学"`、`"画图"`、`"原材料"`、`"获得了新生"`、`没有"无限软"的光子`. The model uses quotes to flag "this is a metaphor or loose term", but readers don't need that signal and the quotes accumulate into visual noise. **Default to no quotes.** Even on first-mention coinages or metaphorical adjectives, quotes are usually unnecessary if surrounding prose makes the sense clear — `没有"无限软"的光子` reads cleaner as `没有无限软的光子`. Reserve quotes for (a) real quotations, (b) a term whose unquoted form would be misparsed, or (c) genuine irony. When tempted to quote a metaphor, try the unquoted version first; if it reads fine, ship it unquoted.
+- **Decorative scare quotes** — `""` around a term that is neither an actual quotation, a coinage on first mention, nor genuine irony: `"故障美学"`、`"画图"`、`"原材料"`、`"获得了新生"`、`没有"无限软"的光子. The model uses quotes to flag "this is a metaphor or loose term", but readers don't need that signal and the quotes accumulate into visual noise. **Default to no quotes.** Even on first-mention coinages or metaphorical adjectives, quotes are usually unnecessary if surrounding prose makes the sense clear — `没有"无限软"的光子` reads cleaner as `没有无限软的光子`. Reserve quotes for (a) real quotations, (b) a term whose unquoted form would be misparsed, or (c) genuine irony. When tempted to quote a metaphor, try the unquoted version first; if it reads fine, ship it unquoted.
 - **Redundant English gloss after a Chinese term** — `故障美学（glitch art）`、`着陆页（landing page）`、`大模型（large language model）`、`渲染（render）`. The English in parens is padding for any reader who already understood the Chinese; the model adds it reflexively to sound bilingual or "precise". Drop the gloss. Keep it only when the Chinese rendering is non-standard or unfamiliar enough that the English is load-bearing for lookup (rare for established terms).
 - **Postfix qualifier carrying the actual news** — Chinese-flavored inversion where the main clause states a generic fact and a trailing `主要靠 / 凭借 / 通过 / 得益于 / 借助 X` clause hides the actual point. Example: `近几年它们在前端动画里又火了一把，主要靠"故障美学"` — "故障美学" is the news; the front clause is filler. Rewrite by fronting the qualifier: `近几年以故障美学的姿态在前端动画中大受欢迎`. Heuristic: if deleting the trailing clause guts the sentence's information, it belonged at the front.
 - **Essentializing tic** — "本质是 xx" / "归根结底是 xx" / "说白了就是 xx" / "本质上 xx" as a formulaic opener for a summarizing claim. Each is fine occasionally; in a piece with three of them the writer is using "I'll now summarize" as a verbal crutch. Drop the opener and let the claim stand on its own.
@@ -168,12 +162,13 @@ If any answer is unsatisfactory, do another pass. Then deliver.
 | Emoji 🚀✨🔥 in headers/bullets | Decoration without signal | Strip |
 | 重磅 / 终极 / 革命性 / ultimate | Marketing register | Replace with concrete claim or delete |
 | "三大核心 / 四大优势" | Forced trichotomy | Drop label, let items stand |
+| "核心就三点：" / "先说结论：" | Lead with loud heading | Drop, let content lead |
 | Tables with 2 rows or duplicate columns | Table fetish | Convert to prose |
 | `**every noun phrase**` | Bold spam | At most one bold per paragraph |
 | `>` block paraphrasing previous line | Decorative quote | Delete |
 | "立即升级！敬请期待！" | Empty CTA | Delete unless actually selling |
 | "你是否还在为 X 烦恼？" | Manufactured pain point | Delete unless source raised it |
-| "性价比逆天" replacing "¥22 vs ¥122" | Lost specificity | Restore the number |
+| "性价比逆天" | Embrassive advertisement | Replace with rational data |
 | Softened critique | Sanitized honesty | Restore the bluntness from source |
 | Same shape every section | Template repetition | Vary structure |
 | `---` between every section | Filler dividers | Remove most |

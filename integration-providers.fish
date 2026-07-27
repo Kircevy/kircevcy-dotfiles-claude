@@ -20,6 +20,9 @@ function claude-with
             set -fx ANTHROPIC_AUTH_TOKEN $ZAI_API_KEY
         case deepseek
             set -fx ANTHROPIC_AUTH_TOKEN $DEEPSEEK_API_KEY
+        case deepseek-v4
+            # token 硬编码在 json 里，不需要环境变量
+            set -fx ANTHROPIC_AUTH_TOKEN embedded
         case openrouter
             set -fx ANTHROPIC_AUTH_TOKEN $OPENROUTER_API_KEY
         case ofox
@@ -29,6 +32,12 @@ function claude-with
         case gpt
             # codex-to-claude proxy: ChatGPT OAuth backend, no real token needed.
             set -fx ANTHROPIC_AUTH_TOKEN dummy
+        case longcat
+            set -fx ANTHROPIC_AUTH_TOKEN REDACTED
+        case agnes
+            if set -q AGNES_API_KEY
+                set -fx ANTHROPIC_AUTH_TOKEN $AGNES_API_KEY
+            end
         case '*'
             echo "claude-with: unknown provider '$provider'" >&2
             return 1
@@ -58,4 +67,22 @@ end
 
 function gpt
     claude-with gpt $argv
+end
+
+function agnes
+    claude-with agnes $argv
+end
+
+function longcat
+    claude-with longcat $argv
+end
+
+function deepseek-v4
+    # Start proxy if not running (disown to survive terminal close)
+    if not lsof -i :8080 >/dev/null 2>&1
+        uv run --script ~/.claude/proxy/deepseek-v4-proxy.py &
+        disown
+        sleep 2
+    end
+    claude-with deepseek-v4 $argv
 end
