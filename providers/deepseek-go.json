@@ -1,0 +1,17 @@
+{
+  "env": {
+    "ANTHROPIC_API_KEY": "",
+    "ANTHROPIC_BASE_URL": "http://127.0.0.1:18085",
+    "API_TIMEOUT_MS": "3000000",
+    "CLAUDE_CODE_EFFORT_LEVEL": "max",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "deepseek-v4-flash",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "deepseek-v4-flash",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "deepseek-v4-flash",
+    "ANTHROPIC_DEFAULT_MODEL": "deepseek-v4-flash",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "deepseek-v4-flash"
+  },
+  "skipAutoPermissionPrompt": false,
+  "voiceEnabled": false,
+  "remoteControlAtStartup": false
+}

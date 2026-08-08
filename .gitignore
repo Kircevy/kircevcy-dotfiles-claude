@@ -68,6 +68,15 @@
 /skills/todoist
 
 __pycache__/
+
+# provider credentials — never commit real API keys
+/deepseek.json
+providers/kimi.json
+providers/longcat.json
+providers/agnes.json
+proxy/.env
+proxy/deepseek-v4-proxy.py
+
 RTK.md
 .codex
 .claude-usage-cache.json
