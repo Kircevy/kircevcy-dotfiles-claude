@@ -5,7 +5,7 @@
 set -euo pipefail
 
 input=$(cat)
-skill=$(jq -r '.tool_input.skill // ""' <<< "$input")
+skill=$(jq -r '.tool_input.skill // .tool_input.name // ""' <<< "$input")
 case "$skill" in *pueue*) ;; *) exit 0 ;; esac
 
 SID=$(jq -r '.session_id // "unknown"' <<< "$input")

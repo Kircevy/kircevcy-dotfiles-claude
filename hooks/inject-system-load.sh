@@ -39,7 +39,10 @@ COOLDOWN_SEC="${SYSLOAD_COOLDOWN_SEC:-600}"
 # to "unknown" if stdin is a TTY (manual run) or jq fails on non-JSON.
 PAYLOAD=""
 if ! [ -t 0 ]; then
-  PAYLOAD=$(cat || true)
+  # Bounded read: some bridges keep stdin open forever; a bare `cat` would
+  # hang to the hook timeout. `dd count=1` does one read() and returns
+  # instantly — no EOF wait, zero latency, payload fully captured.
+  PAYLOAD=$(timeout 2 dd bs=8192 count=1 2>/dev/null || true)
 fi
 SID=$(printf '%s' "$PAYLOAD" | jq -r '.session_id // "unknown"' 2>/dev/null) || SID="unknown"
 [ -z "$SID" ] && SID="unknown"
@@ -92,7 +95,9 @@ fi
 
 # --- GPU (if nvidia-smi present) ---
 if command -v nvidia-smi >/dev/null 2>&1; then
-  GPU_INFO=$(nvidia-smi --query-gpu=index,utilization.gpu,memory.used,memory.total \
+  # WSL2 driver mismatch can hang nvidia-smi for many seconds — bound it so a
+  # flaky GPU probe never stalls every prompt.
+  GPU_INFO=$(timeout 3 nvidia-smi --query-gpu=index,utilization.gpu,memory.used,memory.total \
              --format=csv,noheader,nounits 2>/dev/null || true)
   if [ -n "$GPU_INFO" ]; then
     while IFS=',' read -r idx util mused mtotal; do

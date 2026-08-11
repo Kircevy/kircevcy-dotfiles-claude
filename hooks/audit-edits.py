@@ -118,11 +118,11 @@ def cmd_hook() -> int:
     except (json.JSONDecodeError, ValueError):
         return 0
 
-    if payload.get("tool_name") not in ("Write", "Edit", "MultiEdit"):
+    if payload.get("tool_name") not in ("Write", "Edit", "MultiEdit", "write_file", "edit_file", "multi_edit"):
         return 0
 
     tin = payload.get("tool_input") or {}
-    raw_path = tin.get("file_path") or tin.get("file") or ""
+    raw_path = tin.get("file_path") or tin.get("file") or tin.get("path") or ""
     if not raw_path:
         return 0
 

@@ -19,6 +19,6 @@ read_bash_command() {
 # nor the legacy .tool_input.file is set.
 read_file_path() {
     input=$(cat)
-    file_path=$(jq -r '.tool_input.file_path // .tool_input.file // ""' <<< "$input")
+    file_path=$(jq -r '.tool_input.file_path // .tool_input.file // .tool_input.path // ""' <<< "$input")
     [ -n "$file_path" ] || exit 0
 }

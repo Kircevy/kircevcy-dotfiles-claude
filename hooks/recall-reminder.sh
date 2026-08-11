@@ -22,7 +22,10 @@ mkdir -p -m 700 "$STATE_DIR"
 
 PAYLOAD=""
 if ! [ -t 0 ]; then
-  PAYLOAD=$(cat || true)
+  # Bounded read: some bridges keep stdin open forever; a bare `cat` would
+  # hang to the hook timeout. `dd count=1` does one read() and returns
+  # instantly — no EOF wait, zero latency, payload fully captured.
+  PAYLOAD=$(timeout 2 dd bs=8192 count=1 2>/dev/null || true)
 fi
 SID=$(printf '%s' "$PAYLOAD" | jq -r '.session_id // "unknown"' 2>/dev/null) || SID="unknown"
 [ -z "$SID" ] && SID="unknown"

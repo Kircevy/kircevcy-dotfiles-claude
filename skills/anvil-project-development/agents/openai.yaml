@@ -1,0 +1,4 @@
+interface:
+  display_name: "Anvil 项目开发最佳实践"
+  short_description: "按 Anvil 规范完成代码生成、落位、菜单映射与联调验收"
+  default_prompt: "使用 $anvil-project-development 按平台最佳实践实现这个 Anvil 项目需求。"

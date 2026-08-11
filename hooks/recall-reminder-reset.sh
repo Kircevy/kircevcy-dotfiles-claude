@@ -24,7 +24,7 @@ TOOL=$(printf '%s' "$PAYLOAD" | jq -r '.tool_name // ""' 2>/dev/null) || TOOL=""
 RESET=0
 case "$TOOL" in
   Read)
-    FP=$(printf '%s' "$PAYLOAD" | jq -r '.tool_input.file_path // ""' 2>/dev/null) || FP=""
+    FP=$(printf '%s' "$PAYLOAD" | jq -r '.tool_input.file_path // .tool_input.path // ""' 2>/dev/null) || FP=""
     case "$FP" in
       */memory/pages/*.md|*/memory/pitfalls.md) RESET=1 ;;
     esac
